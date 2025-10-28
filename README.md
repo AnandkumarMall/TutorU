@@ -228,7 +228,7 @@ We welcome contributions! Help make TutorU even smarter and more accessible.
 - **Changelog**: Update `CHANGELOG.md` for releases.  
 - **No Breaking Changes**: Deprecate, don't delete.
 
-**Credit**: Built with ❤️ by [Your Name](https://github.com/AnandkumarMall). Contributions from the open-source community.
+**Credit**: Built with ❤️ by [Anand Kumar Mall](https://github.com/AnandkumarMall). Contributions from the open-source community.
 
 
 **Star this repo if it helps your learning journey! 🌟**  
