@@ -86,9 +86,13 @@ def generate_schedule(lessons: Dict[str, LessonSchema]) -> ScheduleSchema:
     return ScheduleSchema(schedule=schedule)
 
 content_prompt = ChatPromptTemplate.from_template(
-    """Generate detailed content for a lesson in a course. The course is "{course}", the chapter is "{chapter}", and the lesson is "{lesson}". Provide a comprehensive explanation suitable for a beginner, including key concepts, examples, and practical applications. Format the content in markdown with clear headings (##), paragraphs, lists, and code blocks where appropriate. Return a JSON object with a 'content' key containing the lesson content as a string."""
+    """Generate detailed content for a lesson in a course. The course is "{course}", the chapter is "{chapter}", and the lesson is "{lesson}". Provide a comprehensive explanation suitable for a beginner, including key concepts, examples, and practical applications. Format the content in markdown with clear headings (##), paragraphs, lists, and code blocks where appropriate.
+
+IMPORTANT: Respond with ONLY the following JSON object. Do not include any additional text, explanations, or Markdown formatting (e.g., no ```json
+
+{{"content": "<insert the full markdown-formatted lesson content here as a single escaped string>"}}"""
 )
-content_chain = content_prompt | llm | PydanticOutputParser(pydantic_object=LessonContentSchema)
+content_chain = content_prompt | llm.with_structured_output(LessonContentSchema)
 
 quiz_prompt = ChatPromptTemplate.from_template(
     """Generate a {quiz_type} for a course on {course}. The context is "{chapter}".

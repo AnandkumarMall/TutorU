@@ -10,7 +10,7 @@ import os
 import markdown
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = 'secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///courses.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -222,6 +222,7 @@ def lesson_view(course_name, chapter_id, lesson_id):
             lesson.content = content_data.content
             db.session.commit()
         except Exception as e:
+            print(f"Raw LLM output for debugging: {content_data if 'content_data' in locals() else 'N/A'}")
             flash(f'Error generating lesson content: {str(e)}', 'error')
     
     return render_template('lesson_view.html',
