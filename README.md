@@ -15,14 +15,9 @@
 [![FAISS CPU](https://img.shields.io/badge/FAISS%20CPU-1.7%2B-blue.svg)](https://github.com/facebookresearch/faiss)
 [![Gunicorn](https://img.shields.io/badge/Gunicorn-21.0%2B-green.svg)](https://gunicorn.org/)
 
-<div align="center">
-  <img src="https://via.placeholder.com/800x400/2d5a8c/f7f4f0?text=TutorU+-+AI-Powered+Learning+Platform" alt="TutorU Banner">
-  <br><br>
-</div>
 
 **TutorU** is an AI-powered web application built with Flask that empowers users to create, schedule, and learn from personalized online courses. Leveraging Google's Gemini AI (via LangChain), it generates structured courses with chapters, lessons, and quizzes tailored to any topic. Features include interactive lesson viewing with an AI tutor, adaptive quizzes, and daily task scheduling to keep learners on track. Perfect for educators, self-learners, or anyone building knowledge paths efficiently.
 
-> **Demo**: [Live Preview](https://your-app-url.com) (Deployed on Heroku/Render – update with your link)  
 > **Tech Stack**: Flask, SQLAlchemy (SQLite), LangChain, Google Gemini AI, Bootstrap 5, FAISS (for RAG), Sentence Transformers.
 
 ## 🚀 Features
