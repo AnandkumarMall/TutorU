@@ -13,3 +13,4 @@ pydantic
 langchain-chroma
 python-multipart
 itsdangerous
+jinja2
