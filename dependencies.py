@@ -29,7 +29,9 @@ def flash(request: Request, message: str, category: str = "message"):
         request.session['_flashes'] = []
     request.session['_flashes'].append((category, message))
 
-def render(request: Request, template_name: str, context: dict):
+def render(request: Request, template_name: str, context: dict = None, status_code: int = 200):
+    if context is None:
+        context = {}
     context["request"] = request
     context["session"] = request.session
     context["get_course_names"] = get_course_names_for_template
@@ -41,4 +43,4 @@ def render(request: Request, template_name: str, context: dict):
         return request.url_for(name, **kwargs)
         
     context["url_for"] = custom_url_for
-    return templates.TemplateResponse(request=request, name=template_name, context=context)
+    return templates.TemplateResponse(request=request, name=template_name, context=context, status_code=status_code)
