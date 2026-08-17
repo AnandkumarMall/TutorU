@@ -1,81 +1,92 @@
 {% extends "base.html" %}
+{% block title %}Dashboard - TutorU{% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Sidebar -->
-    <div class="col-lg-3">
-        <div class="sidebar">
-            <h5 class="mb-3">
-                <i class="fas fa-book me-2"></i>
-                Courses
-            </h5>
-            <div class="d-grid gap-2 mb-3">
-                <a href="{{ url_for('new_course') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>New Course
-                </a>
-            </div>
-            <div class="list-group">
-                {% for course in get_course_names() %}
-                    <a href="{{ url_for('course_detail', course_name=course) }}" class="list-group-item list-group-item-action">
-                        <i class="fas fa-book-open me-2"></i>{{ course }}
-                    </a>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Main Content -->
-    <div class="col-lg-9">
-        <div class="main-content">
-            <h2 class="mb-4">
-                <i class="fas fa-calendar-day me-2"></i>
-                Today's Tasks
-            </h2>
-            
-            {% if not tasks_by_course %}
-                <div class="text-center py-5">
-                    <i class="fas fa-check-circle fa-5x text-success mb-3"></i>
-                    <h4 class="text-muted">All tasks completed!</h4>
-                    <p class="text-muted">No incomplete tasks for today.</p>
+<!-- Minimalist Dashboard Header -->
+<div style="margin-bottom: 48px; padding-top: 24px;">
+    <h1 class="display-md mb-2">Your Dashboard</h1>
+    <p class="body-lg text-mute">
+        {% set total_tasks = tasks_by_course.values() | map('length') | sum %}
+        {% if total_tasks == 0 %}
+            You have no pending tasks today.
+        {% else %}
+            You have {{ total_tasks }} task{% if total_tasks > 1 %}s{% endif %} scheduled for today.
+        {% endif %}
+    </p>
+</div>
+
+<div class="bento-grid" id="tasks">
+    <!-- Tasks Column -->
+    <div class="col-span-8">
+        <h3 class="display-sm mb-4">Today's Tasks</h3>
+        
+        {% if not tasks_by_course %}
+            <div style="padding: 64px 24px; text-align: center; border: 1px dashed var(--hairline-strong); border-radius: var(--radius-md); background: var(--canvas-soft);">
+                <div style="width: 48px; height: 48px; background: var(--canvas); border: 1px solid var(--hairline); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+                    <i class="fas fa-check" style="color: var(--mute); font-size: 16px;"></i>
                 </div>
-            {% else %}
-                {% for course_name, tasks in tasks_by_course.items() %}
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-graduation-cap me-2"></i>
-                                {{ course_name }}
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            {% for task in tasks %}
-                                <div class="task-item d-flex justify-content-between align-items-center">
+                <h4 class="display-sm mb-2" style="font-size: 20px;">Inbox Zero</h4>
+                <p class="body-md text-mute mb-6" style="max-width: 300px; margin-left: auto; margin-right: auto;">You've completed all your tasks for today. Take a break, or start a new course.</p>
+                <a href="{{ url_for('new_course') }}" class="btn btn-secondary">Explore new subjects</a>
+            </div>
+        {% else %}
+            <div style="border: 1px solid var(--hairline); border-radius: var(--radius-md); overflow: hidden; background: var(--canvas);">
+                <ul class="data-list">
+                    {% for course_name, tasks in tasks_by_course.items() %}
+                        {% for task in tasks %}
+                            <li class="data-row" style="padding: 16px 24px;" data-schedule-id="{{ task.schedule_id }}" data-task-type="{{ task.task_type }}">
+                                <div style="display: flex; align-items: center; gap: 16px;">
+                                    <button class="complete-task" style="background: transparent; border: 1px solid var(--hairline-strong); border-radius: 4px; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: transparent; padding: 0; transition: all 150ms ease;">
+                                        <i class="fas fa-check" style="font-size: 10px;"></i>
+                                    </button>
                                     <div>
-                                        <strong>{{ task.task_type }}:</strong> {{ task.task_description }}
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        {% if task.task_type == 'Lesson' %}
-                                            <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=task.chapter_id, lesson_id=task.lesson_id) }}" 
-                                               class="btn btn-sm btn-primary">
-                                                <i class="fas fa-book-open me-1"></i>Start
-                                            </a>
-                                        {% else %}
-                                            <a href="{{ url_for('quiz_view', course_name=course_name, chapter_id=task.chapter_id, quiz_type=task.task_type, lesson_id=task.lesson_id if task.task_type == 'Short Quiz' else None) }}" 
-                                               class="btn btn-sm btn-warning">
-                                                <i class="fas fa-question-circle me-1"></i>Start Quiz
-                                            </a>
-                                        {% endif %}
-                                        <button class="btn btn-sm btn-success complete-task" 
-                                                data-schedule-id="{{ task.schedule_id }}" 
-                                                data-task-type="{{ task.task_type }}">
-                                            <i class="fas fa-check me-1"></i>Complete
-                                        </button>
+                                        <div class="body-md" style="font-weight: 500; color: var(--ink);">{{ task.task_description }}</div>
+                                        <div class="caption-mono" style="margin-top: 4px;">{{ course_name }} • {{ task.task_type }}</div>
                                     </div>
                                 </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% endfor %}
+                                <div>
+                                    {% if task.task_type == 'Lesson' %}
+                                        <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=task.chapter_id, lesson_id=task.lesson_id) }}" class="btn btn-secondary btn-sm">Start</a>
+                                    {% elif task.task_type == 'Short Quiz' %}
+                                        <a href="{{ url_for('quiz_view', course_name=course_name, chapter_id=task.chapter_id, lesson_id=task.lesson_id) }}" class="btn btn-secondary btn-sm">Quiz</a>
+                                    {% else %}
+                                        <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=task.chapter_id) }}" class="btn btn-secondary btn-sm">Quiz</a>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Courses Column -->
+    <div class="col-span-4">
+        <h3 class="display-sm mb-4">My Courses</h3>
+        <div style="display: flex; flex-direction: column;">
+            {% set courses = get_course_names() %}
+            {% if not courses %}
+                <div style="padding: 32px 16px; text-align: center; border: 1px solid var(--hairline); border-radius: var(--radius-md); background: var(--canvas);">
+                    <p class="body-sm text-mute mb-4">No active courses.</p>
+                    <a href="{{ url_for('new_course') }}" class="btn btn-secondary btn-sm">Create Course</a>
+                </div>
+            {% else %}
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    {% for course in courses %}
+                        <a href="{{ url_for('course_detail', course_name=course) }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); text-decoration: none; transition: background-color 150ms ease;" onmouseover="this.style.backgroundColor='var(--canvas-soft)'" onmouseout="this.style.backgroundColor='transparent'">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--primary);"></div>
+                                <span class="body-md" style="font-weight: 500; color: var(--ink);">{{ course }}</span>
+                            </div>
+                            <i class="fas fa-arrow-right text-mute" style="font-size: 12px;"></i>
+                        </a>
+                    {% endfor %}
+                    <a href="{{ url_for('new_course') }}" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 1px dashed var(--hairline-strong); border-radius: var(--radius-sm); text-decoration: none; color: var(--ink); margin-top: 8px;" onmouseover="this.style.backgroundColor='var(--canvas-soft)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <i class="fas fa-plus" style="font-size: 12px;"></i>
+                        <span class="body-md" style="font-weight: 500;">Generate new course</span>
+                    </a>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -88,9 +99,10 @@
         const completeButtons = document.querySelectorAll('.complete-task');
         completeButtons.forEach(button => {
             button.addEventListener('click', function() {
-                const scheduleId = this.dataset.scheduleId;
-                const taskType = this.dataset.taskType;
-                const button = this;
+                const dataRow = this.closest('.data-row');
+                const scheduleId = dataRow.dataset.scheduleId;
+                const taskType = dataRow.dataset.taskType;
+                const checkbox = this;
                 
                 fetch('/mark_task_completed', {
                     method: 'POST',
@@ -105,16 +117,17 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        button.closest('.task-item').style.opacity = '0.5';
-                        button.disabled = true;
-                        button.innerHTML = '<i class="fas fa-check me-1"></i>Completed';
+                        dataRow.classList.add('completed');
+                        checkbox.style.background = 'var(--ink)';
+                        checkbox.style.borderColor = 'var(--ink)';
+                        checkbox.style.color = 'var(--on-primary)';
                         
                         setTimeout(() => {
-                            button.closest('.task-item').remove();
-                            
-                            const remainingTasks = button.closest('.card-body').querySelectorAll('.task-item');
-                            if (remainingTasks.length === 0) {
-                                button.closest('.card').remove();
+                            dataRow.style.display = 'none';
+                            // Check if no tasks left
+                            const list = dataRow.closest('.data-list');
+                            if (list.querySelectorAll('.data-row[style!="display: none;"]').length === 0) {
+                                location.reload();
                             }
                         }, 500);
                     } else {

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Server Error - TutorU{% endblock %}
+{% block content %}
+<div style="min-height: 70vh; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
+    <div style="font-family: var(--font-serif); font-size: 96px; font-weight: 600; line-height: 1; color: var(--error);">500</div>
+    <h2 class="display-sm mt-4 mb-2">Internal Server Error</h2>
+    <p class="body-md text-mute mb-6" style="max-width: 400px;">We're experiencing some technical difficulties. Please try again later.</p>
+    <div style="display: flex; gap: 16px; justify-content: center;">
+        <a href="/" class="btn btn-primary"><i class="fas fa-home"></i> Go Home</a>
+        <button onclick="window.location.reload()" class="btn btn-secondary"><i class="fas fa-sync-alt"></i> Try Again</button>
+    </div>
+</div>
+{% endblock %}

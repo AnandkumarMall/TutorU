@@ -1,96 +1,216 @@
 {% extends "base.html" %}
+{% block title %}{{ lesson_title }} - TutorU{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12 mb-3">
-        <a href="{{ url_for('course_detail', course_name=course_name) }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Back to Course
-        </a>
-    </div>
+<style>
+    @media print {
+        .col-span-4,
+        .btn:not(.print-btn),
+        nav,
+        .alert,
+        hr,
+        .back-button {
+            display: none !important;
+        }
+        .col-span-8 {
+            grid-column: span 12 !important;
+        }
+        .bento-grid {
+            display: block !important;
+        }
+        body {
+            overflow: visible !important;
+            height: auto !important;
+        }
+        * {
+            page-break-inside: auto;
+        }
+        pre, blockquote {
+            page-break-inside: avoid;
+        }
+    }
+
+    .lesson-content h1 { font-size: 32px; font-weight: 600; letter-spacing: -1.28px; margin-top: 32px; margin-bottom: 16px; }
+    .lesson-content h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.96px; margin-top: 32px; margin-bottom: 16px; }
+    .lesson-content h3 { font-size: 20px; font-weight: 600; letter-spacing: -0.6px; margin-top: 24px; margin-bottom: 16px; }
+    .lesson-content p { font-size: 16px; line-height: 1.6; color: var(--body); margin-bottom: 16px; max-width: 70ch; }
+    .lesson-content ul, .lesson-content ol { margin-bottom: 16px; padding-left: 24px; color: var(--body); }
+    .lesson-content li { margin-bottom: 8px; line-height: 1.6; }
+    .lesson-content pre { background-color: var(--canvas-soft-2); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--hairline); overflow-x: auto; margin-bottom: 16px; }
+    .lesson-content code { font-family: var(--font-mono); font-size: 13px; }
+    .lesson-content blockquote { border-left: 3px solid var(--primary); padding-left: 16px; margin-left: 0; color: var(--mute); font-style: italic; }
+
+    .chat-container {
+        height: 400px;
+        overflow-y: auto;
+        padding-right: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .chat-message {
+        padding: 12px 16px;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        line-height: 1.5;
+        max-width: 90%;
+    }
+    
+    .chat-message.user {
+        background-color: var(--primary);
+        color: var(--on-primary);
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+    }
+    
+    .chat-message.assistant {
+        background-color: var(--canvas-soft-2);
+        color: var(--ink);
+        align-self: flex-start;
+        border: 1px solid var(--hairline);
+        border-bottom-left-radius: 4px;
+    }
+
+    .form-input {
+        width: 100%;
+        height: 40px;
+        background-color: var(--canvas);
+        color: var(--ink);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius-sm);
+        padding: 0 12px;
+        font-family: var(--font-sans);
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .form-input:focus {
+        border-color: var(--primary);
+    }
+    
+    #reading-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        background-color: var(--ink);
+        width: 0%;
+        z-index: 9999;
+        transition: width 0.1s ease;
+    }
+</style>
+
+<div id="reading-progress"></div>
+
+<div class="mb-8 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('course_detail', course_name=course_name) }}" class="btn btn-secondary back-button">
+        <i class="fas fa-arrow-left"></i> Back to Course
+    </a>
 </div>
 
-<div class="row">
-    <div class="col-lg-8">
-        <div class="main-content">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2>{{ lesson_title }}</h2>
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-folder-open me-1"></i>{{ course_name }}
-                        <i class="fas fa-chevron-right mx-2"></i>
-                        <i class="fas fa-book me-1"></i>{{ chapter_title }}
-                    </p>
+<div class="bento-grid">
+    <!-- Lesson Content -->
+    <div class="col-span-8">
+        <div style="margin-bottom: 32px; border-bottom: 1px solid var(--hairline); padding-bottom: 24px;">
+            <div class="caption-mono mb-2" style="display: flex; gap: 8px; align-items: center;">
+                <span>{{ course_name }}</span>
+                <span>/</span>
+                <span>{{ chapter_title }}</span>
+            </div>
+            <h1 class="display-lg tracking-tighter" style="margin-bottom: 16px;">{{ lesson_title }}</h1>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="caption-mono text-mute" style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-clock"></i> <span id="readingTime">Calculating...</span>
                 </div>
-                <div class="text-muted">
-                    <i class="fas fa-clock me-1"></i>
-                    <span id="readingTime">Calculating...</span>
+                <button class="btn btn-ghost print-btn" onclick="window.print()" title="Print lesson notes">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+
+        {% if content %}
+            <div class="lesson-content" id="lessonContent">
+                {{ content | markdown | safe }}
+            </div>
+
+            <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; align-items: center;">
+                <div class="body-sm text-mute">
+                    Done reading? Mark as complete to update your progress.
                 </div>
+                {% if is_completed %}
+                <button class="btn btn-primary" id="markCompleted" disabled style="background: var(--success); color: #fff; border-color: var(--success);">
+                    <i class="fas fa-check"></i> Completed
+                </button>
+                {% else %}
+                <button class="btn btn-primary" id="markCompleted">
+                    <i class="fas fa-check"></i> Mark Complete
+                </button>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+                {% if prev_lesson %}
+                <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=chapter_id, lesson_id=prev_lesson.lesson_id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Previous Lesson
+                </a>
+                {% else %}
+                <div></div>
+                {% endif %}
+                
+                {% if next_lesson %}
+                <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=chapter_id, lesson_id=next_lesson.lesson_id) }}" class="btn btn-secondary">
+                    Next Lesson <i class="fas fa-arrow-right"></i>
+                </a>
+                {% else %}
+                <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=chapter_id) }}" class="btn btn-primary" style="background-color: var(--tertiary); border-color: var(--tertiary);">
+                    Take Chapter Quiz <i class="fas fa-brain" style="margin-left: 8px;"></i>
+                </a>
+                {% endif %}
+            </div>
+        {% else %}
+            <div style="padding: 64px 0; text-align: center;">
+                <i class="fas fa-circle-notch fa-spin text-mute" style="font-size: 32px; margin-bottom: 16px;"></i>
+                <h3 class="display-sm mb-2">Generating lesson...</h3>
+                <p class="body-md text-mute mb-4">Please wait while the AI prepares your material.</p>
+                <button class="btn btn-secondary" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- AI Tutor Sidebar -->
+    <div class="col-span-4">
+        <div class="card p-0" style="position: sticky; top: 88px;">
+            <div style="padding: 16px 20px; border-bottom: 1px solid var(--hairline); display: flex; align-items: center; gap: 8px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--success);"></div>
+                <span class="body-md" style="font-weight: 500;">AI Tutor</span>
             </div>
             
-            {% if content %}
-                <div class="lesson-content" id="lessonContent">
-                {{ content | markdown | safe }}
-                </div>
-                
-                <hr class="my-4">
-                
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Lesson completed? Mark it as done to continue to the next task.
+            <div style="padding: 20px;">
+                <div class="chat-container mb-4" id="chatContainer">
+                    <div style="text-align: center; color: var(--mute); padding: 32px 0;">
+                        <i class="fas fa-robot" style="font-size: 32px; margin-bottom: 16px; opacity: 0.5;"></i>
+                        <div class="body-sm">Ask me anything about this lesson.</div>
                     </div>
-                    <button class="btn btn-success" id="markCompleted">
-                        <i class="fas fa-check me-2"></i>Mark as Completed
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" class="form-input" id="questionInput" placeholder="Type your question..." {% if not content %}disabled{% endif %} style="flex: 1;">
+                    <button class="btn btn-primary" id="askButton" {% if not content %}disabled{% endif %}>
+                        <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
-            {% else %}
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <h4 class="text-muted">Generating lesson content...</h4>
-                    <p class="text-muted">Please wait while we prepare your lesson. This may take a few moments.</p>
-                    <button class="btn btn-primary mt-3" onclick="location.reload()">
-                        <i class="fas fa-sync-alt me-2"></i>Refresh
-                    </button>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-    
-    <div class="col-lg-4">
-        <div class="card sticky-top" style="top: 100px;">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-robot me-2"></i>
-                    AI Tutor
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="chat-container" id="chatContainer">
-                    <div class="text-center text-muted py-3">
-                        <i class="fas fa-comments fa-2x mb-2"></i>
-                        <p class="mb-0">Ask me anything about this lesson!</p>
-                    </div>
-                </div>
                 
-                <div class="mt-3">
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="questionInput" 
-                               placeholder="Ask a question about the lesson..."
-                               {% if not content %}disabled{% endif %}>
-                        <button class="btn btn-primary" type="button" id="askButton" 
-                                {% if not content %}disabled{% endif %}>
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
+                <div class="caption-mono mt-3" style="text-align: center; font-size: 10px;">
+                    AI responds based strictly on lesson material.
                 </div>
-                
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        The AI will answer based only on the lesson content.
-                    </small>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; justify-content: center;">
+                    <span class="badge" style="cursor: pointer; background: var(--canvas-soft); color: var(--ink); border: 1px solid var(--hairline);" onclick="document.getElementById('questionInput').value='Explain the key concepts'; document.getElementById('askButton').click();">Key concepts</span>
+                    <span class="badge" style="cursor: pointer; background: var(--canvas-soft); color: var(--ink); border: 1px solid var(--hairline);" onclick="document.getElementById('questionInput').value='Give me a simple example'; document.getElementById('askButton').click();">Example</span>
+                    <span class="badge" style="cursor: pointer; background: var(--canvas-soft); color: var(--ink); border: 1px solid var(--hairline);" onclick="document.getElementById('questionInput').value='Summarize this for me'; document.getElementById('askButton').click();">Summary</span>
                 </div>
             </div>
         </div>
@@ -100,118 +220,165 @@
 
 {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const chatContainer = document.getElementById('chatContainer');
         const questionInput = document.getElementById('questionInput');
         const askButton = document.getElementById('askButton');
         const lessonContent = document.getElementById('lessonContent');
-        
+
         if (lessonContent) {
             const text = lessonContent.textContent;
             const wordCount = text.trim().split(/\s+/).length;
-            const readingTime = Math.ceil(wordCount / 200); // 200 words per minute
+            const readingTime = Math.ceil(wordCount / 200);
             document.getElementById('readingTime').textContent = `${readingTime} min read`;
-        }
-        
-function askQuestion() {
-    const question = questionInput.value.trim();
-    if (!question) return;
-    
-    addMessage('user', question);
-    questionInput.value = '';
-    
-    addMessage('assistant', '<i class="fas fa-spinner fa-spin me-2"></i>Thinking...', true);
-    
-    const lessonContentElement = document.getElementById('lessonContent');
-    const rawContent = lessonContentElement ? lessonContentElement.textContent || lessonContentElement.innerText : '';
-    
-    fetch('/ask_question', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            question: question,
-            course_name: '{{ course_name }}',
-            chapter_title: '{{ chapter_title }}',
-            lesson_title: '{{ lesson_title }}',
-            content: rawContent
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        const loadingMessages = chatContainer.querySelectorAll('.loading');
-        loadingMessages.forEach(msg => msg.remove());
-        
-        if (data.success) {
-            addMessage('assistant', data.answer + '<br><small class="text-muted">' + data.citation + '</small>');
-        } else {
-            addMessage('assistant', '<i class="fas fa-exclamation-triangle me-2"></i>Sorry, I couldn\'t process your question. Please try again. Error: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        const loadingMessages = chatContainer.querySelectorAll('.loading');
-        loadingMessages.forEach(msg => msg.remove());
-        addMessage('assistant', '<i class="fas fa-exclamation-triangle me-2"></i>Network error. Please check your connection and try again.');
-    });
-}
-        
-function addMessage(role, content, isLoading = false) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${role} ${isLoading ? 'loading' : ''}`;
-    
-    if (role === 'assistant' && !isLoading) {
-        let formattedContent = content
-            .replace(/### (.*?)(?=\n|$)/g, '<h4 style="color: #6366f1; margin: 15px 0 10px 0; font-size: 1.1rem; font-weight: 600;">$1</h4>')
-            .replace(/## (.*?)(?=\n|$)/g, '<h3 style="color: #6366f1; margin: 15px 0 10px 0; font-size: 1.2rem; font-weight: 600;">$1</h3>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #6366f1;">$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em style="color: #8b5cf6;">$1</em>')
-            .replace(/^- (.*?)(?=\n|$)/gm, '<li style="margin: 5px 0; padding-left: 10px;">$1</li>')
-            .replace(/(<li style="margin: 5px 0; padding-left: 10px;">.*<\/li>)/gs, '<ul style="margin: 10px 0; padding-left: 20px;">$1</ul>')
-            .split('\n\n')
-            .map(paragraph => {
-                if (paragraph.trim() === '') return '';
-                if (paragraph.includes('<h') || paragraph.includes('<ul') || paragraph.includes('<li')) {
-                    return paragraph;
-                }
-                return `<p style="margin: 10px 0; line-height: 1.5;">${paragraph}</p>`;
-            })
-            .join('');
-        
-        messageDiv.innerHTML = formattedContent;
-    } else {
-        messageDiv.innerHTML = content;
-    }
-    
-    chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-        
-        askButton.addEventListener('click', askQuestion);
-        questionInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                askQuestion();
-            }
-        });
-        
-        document.getElementById('markCompleted').addEventListener('click', function() {
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
             
-            setTimeout(() => {
-                this.innerHTML = '<i class="fas fa-check me-2"></i>Completed!';
-                this.className = 'btn btn-success';
+            // Reading progress bar logic
+            window.addEventListener('scroll', () => {
+                const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+                const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (winScroll / height) * 100;
+                document.getElementById('reading-progress').style.width = scrolled + '%';
+            });
+        }
+
+        function askQuestion() {
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            addMessage('user', question);
+            questionInput.value = '';
+
+            addMessage('assistant', '<i class="fas fa-spinner fa-spin"></i> Thinking...', true);
+
+            const rawContent = lessonContent ? lessonContent.textContent || lessonContent.innerText : '';
+
+            fetch('/ask_question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    question: question,
+                    course_name: '{{ course_name }}',
+                    chapter_title: '{{ chapter_title }}',
+                    lesson_title: '{{ lesson_title }}',
+                    content: rawContent
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const loadingMessages = chatContainer.querySelectorAll('.loading');
+                loadingMessages.forEach(msg => msg.remove());
+
+                if (data.success) {
+                    addMessage('assistant', data.answer + '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--hairline); font-size: 11px; color: var(--mute);">' + data.citation + '</div>');
+                } else {
+                    addMessage('assistant', '<i class="fas fa-exclamation-circle text-error"></i> Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const loadingMessages = chatContainer.querySelectorAll('.loading');
+                loadingMessages.forEach(msg => msg.remove());
+                addMessage('assistant', '<i class="fas fa-wifi text-error"></i> Network error.');
+            });
+        }
+
+        function addMessage(role, content, isLoading = false) {
+            // Remove initial empty state if it's the first message
+            const emptyState = chatContainer.querySelector('.text-center');
+            if (emptyState && emptyState.querySelector('.fa-robot')) {
+                emptyState.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role} ${isLoading ? 'loading' : ''}`;
+
+            if (role === 'assistant' && !isLoading) {
+                // Extremely basic markdown parsing for bold and linebreaks
+                let formatted = content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+                messageDiv.innerHTML = formatted;
+            } else {
+                messageDiv.innerHTML = content;
+            }
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        if (askButton) {
+            askButton.addEventListener('click', askQuestion);
+            questionInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    askQuestion();
+                }
+            });
+        }
+
+        const markBtn = document.getElementById('markCompleted');
+        if (markBtn) {
+            markBtn.addEventListener('click', function () {
+                const btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Marking...';
                 
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-success mt-3';
-                alert.innerHTML = '<i class="fas fa-check-circle me-2"></i>Lesson marked as completed! You can now proceed to the next task.';
-                this.parentNode.appendChild(alert);
-                
-                setTimeout(() => {
-                    alert.remove();
-                }, 3000);
-            }, 1000);
+                fetch('/mark_task_completed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        course_name: '{{ course_name }}',
+                        chapter_id: {{ chapter_id }},
+                        lesson_id: {{ lesson_id }},
+                        task_type: 'Lesson'
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        btn.innerHTML = '<i class="fas fa-check"></i> Completed';
+                        btn.style.background = 'var(--success)';
+                        btn.style.color = '#fff';
+                        btn.style.borderColor = 'var(--success)';
+                        
+                        const msg = document.createElement('div');
+                        msg.className = 'body-sm mt-2';
+                        msg.style.color = 'var(--success)';
+                        msg.innerHTML = 'Lesson marked as completed!';
+                        btn.parentNode.appendChild(msg);
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error. Try again.';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error. Try again.';
+                });
+            });
+        }
+
+        // Add Copy buttons to code blocks
+        document.querySelectorAll('.lesson-content pre').forEach(pre => {
+            pre.style.position = 'relative';
+            const copyBtn = document.createElement('button');
+            copyBtn.innerHTML = '<i class="far fa-copy"></i>';
+            copyBtn.style.cssText = 'position: absolute; top: 8px; right: 8px; background: var(--canvas); border: 1px solid var(--hairline); border-radius: 4px; cursor: pointer; padding: 4px 8px; color: var(--mute); transition: all 0.2s; font-size: 12px;';
+            
+            copyBtn.addEventListener('mouseover', () => copyBtn.style.color = 'var(--ink)');
+            copyBtn.addEventListener('mouseout', () => copyBtn.style.color = 'var(--mute)');
+            
+            copyBtn.onclick = function() {
+                const code = pre.querySelector('code');
+                if (code) {
+                    navigator.clipboard.writeText(code.innerText);
+                    this.innerHTML = '<i class="fas fa-check" style="color: var(--success);"></i>';
+                    setTimeout(() => this.innerHTML = '<i class="far fa-copy"></i>', 2000);
+                }
+            };
+            pre.appendChild(copyBtn);
         });
     });
 </script>

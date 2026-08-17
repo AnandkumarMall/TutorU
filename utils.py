@@ -1,30 +1,24 @@
 import os
 from typing import List, Dict
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import json
-from sentence_transformers import SentenceTransformer
-from langchain_community.vectorstores import FAISS
+import logging
+from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.embeddings import Embeddings
+from langchain_core.output_parsers import StrOutputParser
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-
-class SentenceTransformerEmbeddings(Embeddings):
-    def __init__(self, model_name: str):
-        self.model = SentenceTransformer(model_name)
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        return self.model.encode(texts, convert_to_tensor=False).tolist()
-
-    def embed_query(self, text: str) -> List[float]:
-        return self.model.encode([text], convert_to_tensor=False)[0].tolist()
 
 class ChapterSchema(BaseModel):
     chapters: List[str] = Field(description="List of 5 chapter titles")
@@ -50,7 +44,7 @@ class QuizSchema(BaseModel):
     questions: List[QuizQuestion] = Field(description="List of quiz questions")
 
 chapter_prompt = ChatPromptTemplate.from_template(
-    "Generate a list of 5 chapter titles for a course on {course} that help in fully understanding the topic. "
+    "Generate a list of 5 chapter titles for a course on {course}{description_text} that help in fully understanding the topic. "
     "Return a JSON object with a 'chapters' key containing the list of titles."
 )
 chapter_chain = chapter_prompt | llm.with_structured_output(ChapterSchema)
@@ -87,12 +81,10 @@ def generate_schedule(lessons: Dict[str, LessonSchema]) -> ScheduleSchema:
 
 content_prompt = ChatPromptTemplate.from_template(
     """Generate detailed content for a lesson in a course. The course is "{course}", the chapter is "{chapter}", and the lesson is "{lesson}". Provide a comprehensive explanation suitable for a beginner, including key concepts, examples, and practical applications. Format the content in markdown with clear headings (##), paragraphs, lists, and code blocks where appropriate.
-
-IMPORTANT: Respond with ONLY the following JSON object. Do not include any additional text, explanations, or Markdown formatting (e.g., no ```json
-
-{{"content": "<insert the full markdown-formatted lesson content here as a single escaped string>"}}"""
+    
+    IMPORTANT: Respond with ONLY pure markdown. Do not wrap it in JSON."""
 )
-content_chain = content_prompt | llm.with_structured_output(LessonContentSchema)
+content_chain = content_prompt | llm | StrOutputParser()
 
 quiz_prompt = ChatPromptTemplate.from_template(
     """Generate a {quiz_type} for a course on {course}. The context is "{chapter}".
@@ -103,16 +95,42 @@ quiz_prompt = ChatPromptTemplate.from_template(
 )
 quiz_chain = quiz_prompt | llm | PydanticOutputParser(pydantic_object=QuizSchema)
 
-def create_rag_vector_store(content: str):
+global_embedder = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
+
+from langchain_chroma import Chroma
+from langgraph.graph import StateGraph, END
+from typing import TypedDict
+
+CHROMA_PERSIST_DIR = os.path.join("instance", "chroma_db")
+
+global_chroma = Chroma(
+    collection_name="tutor_lessons",
+    embedding_function=global_embedder,
+    persist_directory=CHROMA_PERSIST_DIR
+)
+
+def add_lesson_to_vector_store(course_name: str, chapter_title: str, lesson_title: str, content: str):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=50,
         separators=["\n## ", "\n\n", "\n", ". "]
     )
     chunks = text_splitter.split_text(content)
-    embedder = SentenceTransformerEmbeddings('all-MiniLM-L6-v2')
-    vector_store = FAISS.from_texts(chunks, embedder)
-    return vector_store, chunks
+    if not chunks:
+        return
+    metadatas = [{"course": course_name, "chapter": chapter_title, "lesson": lesson_title} for _ in chunks]
+    global_chroma.add_texts(texts=chunks, metadatas=metadatas)
+    global_chroma.persist()
+
+def delete_course_from_vector_store(course_name: str):
+    try:
+        # Get all document IDs for this course
+        result = global_chroma.get(where={"course": course_name})
+        if result and result.get("ids"):
+            global_chroma.delete(ids=result["ids"])
+            global_chroma.persist()
+    except Exception as e:
+        logger.error(f"Error deleting course from Chroma DB: {str(e)}")
 
 rag_prompt = ChatPromptTemplate.from_template(
     """You are a helpful tutor explaining concepts clearly and concisely.
@@ -141,31 +159,43 @@ IMPORTANT: Use **bold** for key terms and *italics* for emphasis. Structure your
 Your explanation:"""
 )
 
-def rag_answer(question: str, vector_store, chunks, course_name: str, chapter_title: str, lesson_title: str):
+class TutorState(TypedDict):
+    question: str
+    course_name: str
+    chapter_title: str
+    lesson_title: str
+    context: str
+    answer: str
+
+def retrieve_node(state: TutorState):
     try:
-        docs = vector_store.similarity_search(question, k=3)
-        
-        context_parts = []
-        for i, doc in enumerate(docs):
-            context_parts.append(f"{doc.page_content}")
-        
-        context = "\n\n".join(context_parts)
-        
-        response_chain = rag_prompt | llm
-        result = response_chain.invoke({
-            "course_name": course_name,
-            "chapter_title": chapter_title,
-            "lesson_title": lesson_title,
-            "context": context,
-            "question": question
-        })
-        
-        answer = result.content
-        
-        citation = f'\n\n<small class="text-muted"><i class="fas fa-book me-1"></i>Reference: {lesson_title}</small>'
-        
-        return answer + citation, "Formatted explanation"
-        
+        docs = global_chroma.similarity_search(
+            state["question"], 
+            k=3, 
+            filter={"course": state["course_name"], "lesson": state["lesson_title"]}
+        )
+        context = "\n\n".join([doc.page_content for doc in docs])
+        return {"context": context}
     except Exception as e:
-        print(f"RAG Error: {str(e)}")
-        return f"I'm having trouble accessing the lesson content right now. Please try rephrasing your question.", "[System issue]"
+        logger.error(f"Chroma DB Error: {str(e)}")
+        return {"context": ""}
+
+def generate_node(state: TutorState):
+    response_chain = rag_prompt | llm
+    result = response_chain.invoke({
+        "course_name": state["course_name"],
+        "chapter_title": state["chapter_title"],
+        "lesson_title": state["lesson_title"],
+        "context": state["context"],
+        "question": state["question"]
+    })
+    return {"answer": result.content}
+
+workflow = StateGraph(TutorState)
+workflow.add_node("retrieve", retrieve_node)
+workflow.add_node("generate", generate_node)
+workflow.set_entry_point("retrieve")
+workflow.add_edge("retrieve", "generate")
+workflow.add_edge("generate", END)
+
+tutor_app = workflow.compile()

@@ -1,3 +1,22 @@
+# Python
 __pycache__/
-instance/
 *.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.venv/
+.env
+
+# Application specific
+instance/
+tutoru.db
+
+# macOS
+.DS_Store
+
+# IDE and Agent tooling
+.agents/
+.claude/
+.vscode/
+.idea/

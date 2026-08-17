@@ -1,125 +1,236 @@
-
 # TutorU
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-2.0%2B-green.svg)
-![Google Gemini](https://img.shields.io/badge/Google%20Gemini-4285F4.svg)
-![LangChain](https://img.shields.io/badge/LangChain-black.svg)
-![Bootstrap 5](https://img.shields.io/badge/Bootstrap-5.3-purple.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Flask](https://img.shields.io/badge/Flask-2.0%2B-green.svg)](https://flask.palletsprojects.com/)
+[![Flask-SQLAlchemy](https://img.shields.io/badge/Flask--SQLAlchemy-3.0%2B-orange.svg)](https://flask-sqlalchemy.palletsprojects.com/)
+[![python-dotenv](https://img.shields.io/badge/python--dotenv-1.0%2B-green.svg)](https://github.com/theskumar/python-dotenv)
+[![Markdown](https://img.shields.io/badge/Markdown-3.4%2B-blue.svg)](https://python-markdown.github.io/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-2.4%2B-red.svg)](https://docs.pydantic.dev/)
+[![Sentence Transformers](https://img.shields.io/badge/Sentence%20Transformers-2.2%2B-yellow.svg)](https://www.sbert.net/)
+[![LangChain](https://img.shields.io/badge/LangChain-black.svg)](https://python.langchain.com/docs/get_started/introduction)
+[![LangChain Community](https://img.shields.io/badge/LangChain%20Community-lightgrey.svg)](https://python.langchain.com/docs/integrations/providers/community/)
+[![LangChain Core](https://img.shields.io/badge/LangChain%20Core-darkblue.svg)](https://python.langchain.com/docs/modules/model_io/)
+[![LangChain Google GenAI](https://img.shields.io/badge/LangChain%20Google%20GenAI-purple.svg)](https://python.langchain.com/docs/integrations/llms/google_ai/)
+[![ChromaDB CPU](https://img.shields.io/badge/ChromaDB%20CPU-1.7%2B-blue.svg)](https://github.com/facebookresearch/faiss)
+[![Gunicorn](https://img.shields.io/badge/Gunicorn-21.0%2B-green.svg)](https://gunicorn.org/)
 
-**TutorU** is a beautiful, AI-powered web application that helps you create, schedule, and complete personalized online courses in minutes. Powered by **Google Gemini** and **LangChain**, it generates complete courses with chapters, lessons, and quizzes tailored to any topic you want to learn.
+<div align="center">
+  <img src="https://via.placeholder.com/800x400/2d5a8c/f7f4f0?text=TutorU+-+AI-Powered+Learning+Platform" alt="TutorU Banner">
+  <br><br>
+</div>
 
-![TutorU Dashboard Preview](static/css/task_list.jpeg)
+**TutorU** is an AI-powered web application built with FastAPI that empowers users to create, schedule, and learn from personalized online courses. Leveraging Google's Gemini AI (via LangChain), it generates structured courses with chapters, lessons, and quizzes tailored to any topic. Features include interactive lesson viewing with an AI tutor, adaptive quizzes, and daily task scheduling to keep learners on track. Perfect for educators, self-learners, or anyone building knowledge paths efficiently.
 
-## ✨ Features
+> **Demo**: [Live Preview](https://your-app-url.com) (Deployed on Heroku/Render – update with your link)  
+> **Tech Stack**: FastAPI, SQLAlchemy (SQLite), LangChain, Google Gemini AI, Bootstrap 5, ChromaDB (for RAG), Sentence Transformers.
 
-- **AI Course Generation** – Just type a topic and get a full structured course instantly
-- **Smart Daily Scheduling** – Automatic lesson + quiz planner
-- **Interactive AI Tutor** – Ask questions about any lesson (RAG-powered, no hallucination)
-- **Adaptive Quizzes** – Auto-generated MCQs with instant scoring and feedback
-- **Progress Tracking** – Mark tasks complete and track your learning journey
-- **Modern & Responsive UI** – Clean, warm, professional design with Bootstrap 5
+## 🚀 Features
 
-### Screenshots
+- **AI-Driven Course Generation** 🎓  
+  - Input a course topic (e.g., "Python for Beginners") to auto-generate 5 chapters and 3 lessons per chapter.  
+  - Select and customize chapters before creation.
 
-**1. Create New Course**
-![Create New Course](static/css/create_new_course.jpeg)
+- **Structured Learning Paths** 📅  
+  - Daily schedules with lessons and quizzes (short: 5 questions; large: 10 questions).  
+  - Mark tasks as completed to unlock progress tracking.
 
-**2. Select Chapters**
-![Select Chapters](static/css/select_chapters.jpeg)
+- **Interactive Lessons** 💬  
+  - Rendered Markdown content with headings, lists, code blocks, and examples.  
+  - Built-in AI Tutor (RAG-powered) for Q&A based solely on lesson content – no external knowledge drift.
 
-**3. Generated Course & Notes**
-![Notes Created](static/css/notes_created.jpeg)
+- **Quizzes & Assessment** 📝  
+  - Multiple-choice quizzes with 4 options per question.  
+  - Instant scoring, grading (A-F), and feedback modal.  
+  - Beginner-friendly questions with explanations.
 
-**4. Today's Tasks / Dashboard**
-![Task List](static/css/task_list.jpeg)
+- **User-Friendly Dashboard** 🏠  
+  - Home page shows today's tasks by course.  
+  - Course detail view with accordion-style chapters, lessons, and schedules.  
+  - Responsive design (mobile-friendly) with Bootstrap 5 and custom warm, professional theming.
 
-**5. Quiz Interface**
-![Quiz Question](static/css/quiz_question.jpeg)
+- **Advanced Tech Under the Hood** ⚙️  
+  - Retrieval-Augmented Generation (RAG) using ChromaDB vector store for precise, context-aware AI responses.  
+  - Persistent data with SQLite (easy to scale to PostgreSQL).  
+  - Flash messages, form validation, and loading states for smooth UX.
 
-**6. Quiz Result & Feedback**
-![Quiz Result](static/css/quiz_result.jpeg)
+| Feature                  | Description                                      | AI Integration                  |
+|--------------------------|--------------------------------------------------|---------------------------------|
+| **Course Creation**      | Generate & select chapters/lessons               | Gemini for structured JSON     |
+| **Lesson Viewing**       | Markdown-rendered content + chat                 | RAG with Sentence Transformers |
+| **Quizzes**              | Auto-generated MCQs                              | Gemini for question variety    |
+| **Scheduling**           | Daily tasks (lessons + quizzes)                  | Rule-based from lesson structure |
+| **Progress Tracking**    | Mark complete, hide done tasks                   | Flask sessions + DB            |
 
-## 🛠️ Tech Stack
-
-- **Backend**: Flask + Flask-SQLAlchemy
-- **AI**: Google Gemini (via LangChain) + Sentence Transformers + FAISS (RAG)
-- **Frontend**: Bootstrap 5 + Custom warm theme
-- **Database**: SQLite (easily scalable to PostgreSQL)
-## 🚀 Quick Start
+## 🛠️ Setup & Installation
 
 ### Prerequisites
-- Python 3.8+
-- Google Gemini API Key ([Get it here](https://aistudio.google.com/))
+- Python 3.8+  
+- Google Gemini API Key (free tier available at [Google AI Studio](https://aistudio.google.com/))  
+- Git
 
-### Installation
+### Step-by-Step Installation
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/yourusername/tutoru.git
+   cd tutoru
+   ```
 
+2. **Create Virtual Environment**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   *Note*: Create `requirements.txt` if missing (generated via `pip freeze > requirements.txt`). Key packages:
+   ```
+   fastapi
+   sqlalchemy
+   langchain-google-genai==0.0.7
+   langchain-core==0.1.0
+   sentence-transformers==2.2.2
+   chromadb
+   python-dotenv==1.0.0
+   markdown==3.4.1
+   pydantic==2.4.2
+   gunicorn==21.2.0
+   ```
+
+4. **Set Up Environment Variables**:
+   Create a `.env` file in the root:
+   ```
+   GOOGLE_API_KEY=your_gemini_api_key_here
+   SECRET_KEY=your_secret_key_here  # Generate with: python -c "import secrets; print(secrets.token_hex(16))"
+   ```
+
+5. **Initialize Database**:
+   ```bash
+   uvicorn main:app --reload  # Runs init_db() automatically on first start
+   ```
+   *DB File*: `courses.db` (SQLite – migrates easily to SQLAlchemy-supported DBs).
+
+6. **Run the App**:
+   ```bash
+   uvicorn main:app --reload
+   ```
+   - Access at `http://127.0.0.1:5000`  
+   - Debug mode: `FLASK_ENV=development uvicorn main:app --reload`  
+   - Production: `uvicorn main:app --host 0.0.0.0 --port 5000`
+
+### Docker (Optional)
+For containerized setup:
+```dockerfile
+# Dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY . .
+RUN pip install -r requirements.txt
+EXPOSE 5000
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+```
+Build & Run:
 ```bash
-git clone https://github.com/AnandkumarMall/tutoru.git
-cd tutoru
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup environment variables
-cp .env.example .env
-# Add your GOOGLE_API_KEY and SECRET_KEY in .env
+docker build -t tutoru .
+docker run -p 5000:5000 --env-file .env tutoru
 ```
 
-### Run the Application
+## 📖 Usage
 
-```bash
-python app.py
-```
+1. **Create a New Course** (`/new_course`):  
+   - Enter a topic (e.g., "Machine Learning Basics").  
+   - AI generates 5 chapters → Select 1+ → Submit to auto-create lessons & schedule.
 
-Open your browser and go to `http://127.0.0.1:5000`
+2. **Dashboard** (`/`):  
+   - View "Today's Tasks" grouped by course.  
+   - Click "Start" on lessons/quizzes → Mark complete to progress.
 
----
+3. **View Course** (`/course/<course_name>`):  
+   - Expand chapters to see lessons & scheduled tasks.  
+   - Tasks locked until due date.
 
-## 📖 How to Use
+4. **Read Lessons** (`/lesson/<course_name>/<chapter_id>/<lesson_id>`):  
+   - View generated content.  
+   - Chat with AI Tutor: Ask questions → Get context-specific answers.
 
-1. Go to **"Create New Course"**
-2. Enter any topic (e.g., "Python for Data Science")
-3. AI generates chapters → Select desired chapters
-4. Course with lessons, schedule, and quizzes is created automatically
-5. Start learning from the Dashboard
+5. **Take Quizzes** (`/quiz/<course_name>/<chapter_id>[/<lesson_id>]`):  
+   - Navigate questions with prev/next.  
+   - Submit for score & feedback (e.g., 85% = B grade).
 
-## 🏗️ Project Structure
+**API Endpoints** (for extensions):  
+- `POST /ask_question`: RAG-based Q&A.  
+- `POST /submit_quiz`: Save scores.  
+- `POST /mark_task_completed`: Update progress.
+
+**Pro Tips** 🌟:  
+- Lessons auto-generate on first view (lazy-loading).  
+- Quizzes cache questions daily to avoid regeneration.  
+- Customize themes in `base.html` CSS variables.
+
+## 🏗️ Project Architecture
 
 ```
 tutoru/
-├── app.py                 # Main Flask application
-├── models.py              # Database models
-├── utils.py               # AI chains and RAG logic
-├── templates/             # Jinja2 HTML templates
-├── static/                # CSS, JS, and screenshots
-├── courses.db             # SQLite database
-└── .env                   # API keys
+├── main.py             # FastAPI entry point
+├── routers/            # FastAPI routers
+├── models.py           # SQLAlchemy DB models
+├── utils.py            # LangChain chains, RAG setup
+├── templates/          # Jinja2 HTML (base.html, home.html, etc.)
+├── static/             # CSS/JS (if added)
+├── requirements.txt    # Dependencies
+├── .env                # Secrets
+└── courses.db          # SQLite DB
 ```
+
+- **Frontend**: Bootstrap 5 + Custom CSS (warm palette: blues, creams).  
+- **Backend**: FastAPI + SQLAlchemy ORM.  
+- **AI Pipeline**: LangChain → Gemini → Structured JSON parsing.  
+- **Data Flow**: User input → AI Chain → DB Save → Render Template.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to:
+We welcome contributions! Help make TutorU even smarter and more accessible.
 
-- Improve the UI/UX
-- Add new AI features
-- Enhance RAG accuracy
-- Add user authentication
-- Write tests
+### How to Contribute
+1. **Fork & Clone**:
+   ```bash
+   git fork https://github.com/yourusername/tutoru
+   git clone https://github.com/YOUR_USERNAME/tutoru.git
+   ```
 
-### Steps to Contribute
+2. **Create a Branch**:
+   ```bash
+   git checkout -b feature/amazing-new-feature
+   ```
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-idea`)
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+3. **Make Changes**:
+   - Add tests (use `pytest` – add to requirements).  
+   - Update docs/README.  
+   - Follow PEP8 style (use `black` formatter).
 
----
+4. **Commit & Push**:
+   ```bash
+   git add .
+   git commit -m "Add amazing new feature"
+   git push origin feature/amazing-new-feature
+   ```
 
-**Built with ❤️ by [Anand Kumar Mall](https://github.com/AnandkumarMall)**
+5. **Pull Request**:
+   - Open PR to `main` branch.  
+   - Describe changes, reference issues.
+
+### Guidelines
+- **Issues**: Bug reports, feature requests → Use GitHub Issues.  
+- **Code Style**: PEP8, 4-space indents.  
+- **Testing**: Add unit tests for new chains/routes.  
+- **Changelog**: Update `CHANGELOG.md` for releases.  
+- **No Breaking Changes**: Deprecate, don't delete.
+
+**Credit**: Built with ❤️ by [Anand Kumar Mall](https://github.com/AnandkumarMall). Contributions from the open-source community.
+
+
+**Star this repo if it helps your learning journey! 🌟**  
+*Last Updated: October 28, 2025*

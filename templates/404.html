@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found - TutorU{% endblock %}
+{% block content %}
+<div style="min-height: 70vh; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
+    <div style="font-family: var(--font-serif); font-size: 96px; font-weight: 600; line-height: 1; color: var(--mute);">404</div>
+    <h2 class="display-sm mt-4 mb-2">Page Not Found</h2>
+    <p class="body-md text-mute mb-6" style="max-width: 400px;">The page you are looking for doesn't exist or has been moved.</p>
+    <div style="display: flex; gap: 16px; justify-content: center;">
+        <a href="/" class="btn btn-primary"><i class="fas fa-home"></i> Go Home</a>
+        <button onclick="window.history.back()" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Go Back</button>
+    </div>
+</div>
+{% endblock %}

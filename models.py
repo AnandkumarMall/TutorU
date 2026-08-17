@@ -1,71 +1,80 @@
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy.orm import relationship
 from datetime import datetime
 import json
+from database import Base
 
-db = SQLAlchemy()
-
-class Course(db.Model):
+class Course(Base):
     __tablename__ = 'courses'
-    course_id = db.Column(db.Integer, primary_key=True)
-    course_name = db.Column(db.String(100), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    course_id = Column(Integer, primary_key=True)
+    course_name = Column(String(100), unique=True, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
-    chapters = db.relationship('Chapter', backref='course', cascade='all, delete-orphan')
+    chapters = relationship('Chapter', back_populates='course', cascade='all, delete-orphan')
 
-class Chapter(db.Model):
+class Chapter(Base):
     __tablename__ = 'chapters'
-    chapter_id = db.Column(db.Integer, primary_key=True)
-    course_id = db.Column(db.Integer, db.ForeignKey('courses.course_id'), nullable=False)
-    chapter_title = db.Column(db.String(200), nullable=False)
-    chapter_order = db.Column(db.Integer, nullable=False)
+    chapter_id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, ForeignKey('courses.course_id'), nullable=False)
+    chapter_title = Column(String(200), nullable=False)
+    chapter_order = Column(Integer, nullable=False)
     
-    lessons = db.relationship('Lesson', backref='chapter', cascade='all, delete-orphan')
-    schedule_entries = db.relationship('Schedule', backref='chapter', cascade='all, delete-orphan')
+    course = relationship('Course', back_populates='chapters')
+    lessons = relationship('Lesson', back_populates='chapter', cascade='all, delete-orphan')
+    schedule_entries = relationship('Schedule', back_populates='chapter', cascade='all, delete-orphan')
 
-class Lesson(db.Model):
+class Lesson(Base):
     __tablename__ = 'lessons'
-    lesson_id = db.Column(db.Integer, primary_key=True)
-    chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.chapter_id'), nullable=False)
-    lesson_title = db.Column(db.String(200), nullable=False)
-    lesson_order = db.Column(db.Integer, nullable=False)
-    content = db.Column(db.Text)
+    lesson_id = Column(Integer, primary_key=True)
+    chapter_id = Column(Integer, ForeignKey('chapters.chapter_id'), nullable=False)
+    lesson_title = Column(String(200), nullable=False)
+    lesson_order = Column(Integer, nullable=False)
+    content = Column(Text)
     
-    schedule_entries = db.relationship('Schedule', backref='lesson', cascade='all, delete-orphan')
-    quizzes = db.relationship('Quiz', backref='lesson', cascade='all, delete-orphan')
+    chapter = relationship('Chapter', back_populates='lessons')
+    schedule_entries = relationship('Schedule', back_populates='lesson', cascade='all, delete-orphan')
+    quizzes = relationship('Quiz', back_populates='lesson', cascade='all, delete-orphan')
 
-class Schedule(db.Model):
+class Schedule(Base):
     __tablename__ = 'schedule'
-    schedule_id = db.Column(db.Integer, primary_key=True)
-    course_id = db.Column(db.Integer, db.ForeignKey('courses.course_id'), nullable=False)
-    chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.chapter_id'), nullable=False)
-    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.lesson_id'))
-    date = db.Column(db.String(10), nullable=False) 
-    task_type = db.Column(db.String(20), nullable=False) 
-    task_description = db.Column(db.String(300), nullable=False)
+    schedule_id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, ForeignKey('courses.course_id'), nullable=False)
+    chapter_id = Column(Integer, ForeignKey('chapters.chapter_id'), nullable=False)
+    lesson_id = Column(Integer, ForeignKey('lessons.lesson_id'))
+    date = Column(String(10), nullable=False) 
+    task_type = Column(String(20), nullable=False) 
+    task_description = Column(String(300), nullable=False)
     
-    todays_tasks = db.relationship('TodaysTask', backref='schedule', cascade='all, delete-orphan')
+    chapter = relationship('Chapter', back_populates='schedule_entries')
+    lesson = relationship('Lesson', back_populates='schedule_entries')
+    todays_tasks = relationship('TodaysTask', back_populates='schedule', cascade='all, delete-orphan')
 
-class TodaysTask(db.Model):
+class TodaysTask(Base):
     __tablename__ = 'todays_tasks'
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.String(10), nullable=False)  
-    schedule_id = db.Column(db.Integer, db.ForeignKey('schedule.schedule_id'), nullable=False)
-    task_type = db.Column(db.String(20), nullable=False)
-    generation_status = db.Column(db.String(20), default='Pending')  
-    completed = db.Column(db.Boolean, default=False)
+    id = Column(Integer, primary_key=True)
+    date = Column(String(10), nullable=False)  
+    schedule_id = Column(Integer, ForeignKey('schedule.schedule_id'), nullable=False)
+    task_type = Column(String(20), nullable=False)
+    generation_status = Column(String(20), default='Pending')  
+    completed = Column(Boolean, default=False)
+    
+    schedule = relationship('Schedule', back_populates='todays_tasks')
 
-class Quiz(db.Model):
+class Quiz(Base):
     __tablename__ = 'quizzes'
-    quiz_id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.String(10), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('courses.course_id'), nullable=False)
-    chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.chapter_id'), nullable=False)
-    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.lesson_id'))
-    quiz_type = db.Column(db.String(20), nullable=False)  
-    question = db.Column(db.Text, nullable=False)
-    options = db.Column(db.Text, nullable=False)  
-    correct_answer = db.Column(db.Text, nullable=False)
-    score = db.Column(db.Integer)
+    quiz_id = Column(Integer, primary_key=True)
+    date = Column(String(10), nullable=False)
+    course_id = Column(Integer, ForeignKey('courses.course_id'), nullable=False)
+    chapter_id = Column(Integer, ForeignKey('chapters.chapter_id'), nullable=False)
+    lesson_id = Column(Integer, ForeignKey('lessons.lesson_id'))
+    quiz_type = Column(String(20), nullable=False)  
+    question = Column(Text, nullable=False)
+    options = Column(Text, nullable=False)  
+    correct_answer = Column(Text, nullable=False)
+    score = Column(Integer)
+    
+    lesson = relationship('Lesson', back_populates='quizzes')
     
     def get_options(self):
         return json.loads(self.options)
