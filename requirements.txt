@@ -1,5 +1,4 @@
-fastapi
-uvicorn
+fastapi[all]
 sqlalchemy
 python-dotenv
 markdown
@@ -11,6 +10,3 @@ langgraph
 chromadb
 pydantic
 langchain-chroma
-python-multipart
-itsdangerous
-jinja2
