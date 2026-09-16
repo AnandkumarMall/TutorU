@@ -73,7 +73,17 @@
                 </div>
             {% else %}
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    {% for course in courses %}
+                    {% for course_data in courses %}
+                        {% set course = course_data.name %}
+                        {% if course_data.is_generating %}
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); background-color: var(--canvas-soft); cursor: not-allowed; opacity: 0.8;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <i class="fas fa-spinner fa-spin" style="color: var(--primary); font-size: 12px;"></i>
+                                <span class="body-md" style="font-weight: 500; color: var(--ink);">{{ course }}</span>
+                            </div>
+                            <span class="caption-mono" style="color: var(--primary); font-size: 10px; background: rgba(var(--primary-rgb), 0.1); padding: 2px 6px; border-radius: 4px;">Generating...</span>
+                        </div>
+                        {% else %}
                         <a href="{{ url_for('course_detail', course_name=course) }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); text-decoration: none; transition: background-color 150ms ease;" onmouseover="this.style.backgroundColor='var(--canvas-soft)'" onmouseout="this.style.backgroundColor='transparent'">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--primary);"></div>
@@ -81,6 +91,7 @@
                             </div>
                             <i class="fas fa-arrow-right text-mute" style="font-size: 12px;"></i>
                         </a>
+                        {% endif %}
                     {% endfor %}
                     <a href="{{ url_for('new_course') }}" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 1px dashed var(--hairline-strong); border-radius: var(--radius-sm); text-decoration: none; color: var(--ink); margin-top: 8px;" onmouseover="this.style.backgroundColor='var(--canvas-soft)'" onmouseout="this.style.backgroundColor='transparent'">
                         <i class="fas fa-plus" style="font-size: 12px;"></i>

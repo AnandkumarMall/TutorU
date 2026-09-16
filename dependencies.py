@@ -37,16 +37,13 @@ def flash(request: Request, message: str, category: str = "message"):
     request.session['_flashes'].append((category, message))
 
 
-async def get_course_names(db: AsyncSession) -> list[str]:
+async def get_courses_list(db: AsyncSession) -> list[dict]:
     """
-    Return a list of all course names.
-
-    Async — callers must await this. Uses the provided session so no
-    extra connection is opened (fixed session leak from PERF-1).
+    Return a list of courses with their generating status.
     """
     from models import Course
-    result = await db.execute(select(Course.course_name))
-    return [row[0] for row in result.all()]
+    result = await db.execute(select(Course.course_name, Course.is_generating))
+    return [{"name": row[0], "is_generating": row[1]} for row in result.all()]
 
 
 def render(request: Request, template_name: str, context: dict = None, status_code: int = 200):

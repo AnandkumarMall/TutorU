@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, BackgroundTasks
 from fastapi.exceptions import HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +9,7 @@ from sqlalchemy import select, delete
 
 from database import get_db
 from models import Course, Chapter, Lesson, Schedule, Quiz, TodaysTask
-from dependencies import render, flash, get_course_names
+from dependencies import render, flash, get_courses_list
 
 from utils import chapter_chain, lesson_chain, generate_schedule, delete_course_from_vector_store
 from routers.limiter import limiter
@@ -21,83 +21,112 @@ router = APIRouter()
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def save_course_to_db(
+async def save_course_base_to_db(
     db: AsyncSession,
     course_name: str,
     course_description: str,
     chapters: list,
-    lessons: dict,
-    schedule: dict,
-):
+) -> tuple[int, dict[str, int]]:
     """
-    Write a fully-generated course to the database in a single transaction.
-    Async — all flush/commit calls are awaited.
+    Saves the course and chapter skeletons immediately.
+    Returns (course_id, {chapter_title: chapter_id})
     """
     course = Course(
         course_name=course_name,
         description=course_description if course_description else None,
+        is_generating=True,
     )
     db.add(course)
-    await db.flush()  # populate course.course_id
+    await db.flush()
+    course_id = course.course_id
 
-    chapter_objs: dict[str, Chapter] = {}
-    lesson_objs: dict[str, Lesson] = {}
-
+    chapter_map = {}
     for i, chapter_title in enumerate(chapters, 1):
         chapter = Chapter(
-            course_id=course.course_id,
+            course_id=course_id,
             chapter_title=chapter_title,
             chapter_order=i,
         )
         db.add(chapter)
-        await db.flush()  # populate chapter.chapter_id
-        chapter_objs[chapter_title] = chapter
-
-        for j, lesson_title in enumerate(lessons.get(chapter_title, type('', (), {'lessons': []})()).lessons, 1):
-            lesson = Lesson(
-                chapter_id=chapter.chapter_id,
-                lesson_title=lesson_title,
-                lesson_order=j,
-            )
-            db.add(lesson)
-            await db.flush()  # populate lesson.lesson_id
-            lesson_objs[lesson_title] = lesson
-
-    for date_str, tasks in schedule.items():
-        for task in tasks:
-            task_type = "Lesson"
-            lesson_id = None
-            chapter_id = None
-
-            if task.startswith("Short Quiz:"):
-                task_type = "Short Quiz"
-                lesson_title = task.replace("Short Quiz: ", "")
-                lo = lesson_objs.get(lesson_title)
-                if lo:
-                    lesson_id = lo.lesson_id
-                    chapter_id = lo.chapter_id
-            elif task.startswith("Large Quiz:"):
-                task_type = "Large Quiz"
-                chapter_title_key = task.replace("Large Quiz: ", "")
-                co = chapter_objs.get(chapter_title_key)
-                if co:
-                    chapter_id = co.chapter_id
-            else:
-                lo = lesson_objs.get(task)
-                if lo:
-                    lesson_id = lo.lesson_id
-                    chapter_id = lo.chapter_id
-
-            db.add(Schedule(
-                course_id=course.course_id,
-                chapter_id=chapter_id,
-                lesson_id=lesson_id,
-                date=date_str,
-                task_type=task_type,
-                task_description=task,
-            ))
+        await db.flush()
+        chapter_map[chapter_title] = chapter.chapter_id
 
     await db.commit()
+    return course_id, chapter_map
+
+
+async def _generate_lessons_and_schedule_bg(
+    course_id: int,
+    course_name: str,
+    selected_chapters: list[str],
+    chapter_map: dict[str, int],
+):
+    """Background task to call Gemini and save lessons/schedule."""
+    from database import AsyncSessionLocal
+    import logging
+
+    try:
+        lesson_data = await lesson_chain.ainvoke({
+            "course": course_name,
+            "chapters": "\n".join(f"- {ch}" for ch in selected_chapters),
+        })
+        schedule_data = generate_schedule(lesson_data.course_structure)
+        
+        async with AsyncSessionLocal() as db:
+            lessons = lesson_data.course_structure
+            schedule = schedule_data.schedule
+            lesson_objs: dict[str, tuple[int, int]] = {}
+            
+            for chapter_title, chapter_id in chapter_map.items():
+                for j, lesson_title in enumerate(lessons.get(chapter_title, type('', (), {'lessons': []})()).lessons, 1):
+                    lesson = Lesson(
+                        chapter_id=chapter_id,
+                        lesson_title=lesson_title,
+                        lesson_order=j,
+                    )
+                    db.add(lesson)
+                    await db.flush()
+                    lesson_objs[lesson_title] = (lesson.lesson_id, chapter_id)
+
+            for date_str, tasks in schedule.items():
+                for task in tasks:
+                    task_type = "Lesson"
+                    lesson_id = None
+                    chapter_id = None
+
+                    if task.startswith("Short Quiz:"):
+                        task_type = "Short Quiz"
+                        lesson_title = task.replace("Short Quiz: ", "")
+                        if lesson_title in lesson_objs:
+                            lesson_id, chapter_id = lesson_objs[lesson_title]
+                    elif task.startswith("Large Quiz:"):
+                        task_type = "Large Quiz"
+                        chapter_title_key = task.replace("Large Quiz: ", "")
+                        chapter_id = chapter_map.get(chapter_title_key)
+                    else:
+                        if task in lesson_objs:
+                            lesson_id, chapter_id = lesson_objs[task]
+
+                    db.add(Schedule(
+                        course_id=course_id,
+                        chapter_id=chapter_id,
+                        lesson_id=lesson_id,
+                        date=date_str,
+                        task_type=task_type,
+                        task_description=task,
+                    ))
+
+            course = await db.get(Course, course_id)
+            if course:
+                course.is_generating = False
+            await db.commit()
+    except Exception as e:
+        logging.error(f"Background course generation failed: {e}")
+        async with AsyncSessionLocal() as db:
+            course = await db.get(Course, course_id)
+            if course:
+                course.is_generating = False
+                await db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -109,13 +138,13 @@ async def new_course(request: Request, db: AsyncSession = Depends(get_db)):
     step = request.session.get('step', 'input_course')
     return render(request, "new_course.html", {
         "step": step,
-        "course_names": await get_course_names(db),
+        "course_names": await get_courses_list(db),
     })
 
 
 @router.post("/new_course", name="new_course_process")
 @limiter.limit("5/minute")
-async def new_course_process(request: Request, db: AsyncSession = Depends(get_db)):
+async def new_course_process(request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     form = await request.form()
     action = form.get('action')
 
@@ -164,28 +193,24 @@ async def new_course_process(request: Request, db: AsyncSession = Depends(get_db
         course_name = request.session.get('course_name')
         course_description = request.session.get('course_description')
 
-        try:
-            lesson_data = await lesson_chain.ainvoke({
-                "course": course_name,
-                "chapters": "\n".join(f"- {ch}" for ch in selected_chapters),
-            })
-        except Exception:
-            flash(request, 'Failed to generate lessons. Please try again.', 'error')
-            return RedirectResponse(url=request.url_for('new_course'), status_code=303)
-
-        schedule_data = generate_schedule(lesson_data.course_structure)
-
-        await save_course_to_db(
-            db, course_name, course_description,
-            selected_chapters, lesson_data.course_structure, schedule_data.schedule,
+        # 1. Save course & chapters skeleton immediately
+        course_id, chapter_map = await save_course_base_to_db(
+            db, course_name, course_description, selected_chapters
         )
 
+        # 2. Queue background task for lessons & schedule
+        background_tasks.add_task(
+            _generate_lessons_and_schedule_bg,
+            course_id, course_name, selected_chapters, chapter_map
+        )
+
+        # 3. Clean up session and redirect instantly
         request.session.pop('step', None)
         request.session.pop('course_name', None)
         request.session.pop('course_description', None)
         request.session.pop('chapters', None)
 
-        flash(request, 'Course created successfully!', 'success')
+        flash(request, 'Course creation started! Your lessons are being generated in the background.', 'success')
         return RedirectResponse(url=request.url_for('home'), status_code=303)
 
     return RedirectResponse(url=request.url_for('new_course'), status_code=303)
@@ -254,7 +279,7 @@ async def course_detail(request: Request, course_name: str, db: AsyncSession = D
         "completed_lessons": completed_lessons,
         "lesson_quiz_scores": lesson_quiz_scores,
         "chapter_quiz_scores": chapter_quiz_scores,
-        "course_names": await get_course_names(db),
+        "course_names": await get_courses_list(db),
     })
 
 

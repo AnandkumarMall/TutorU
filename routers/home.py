@@ -7,7 +7,7 @@ from sqlalchemy import select, and_, or_
 
 from database import get_db
 from models import Schedule, Course, TodaysTask
-from dependencies import render, get_course_names
+from dependencies import render, get_courses_list
 
 router = APIRouter()
 
@@ -47,7 +47,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
     return render(request, "home.html", {
         "tasks_by_course": tasks_by_course,
         "today": today,
-        "course_names": await get_course_names(db),
+        "course_names": await get_courses_list(db),
     })
 
 

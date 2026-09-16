@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from database import get_db
 from models import Course, Chapter, Lesson, Schedule, TodaysTask
-from dependencies import render, get_course_names, render_markdown
+from dependencies import render, get_courses_list, render_markdown
 
 from utils import content_chain, add_lesson_to_vector_store
 
@@ -139,5 +139,5 @@ async def lesson_view(
         "prev_lesson": prev_lesson,
         "next_lesson": next_lesson,
         "is_completed": is_completed,
-        "course_names": await get_course_names(db),
+        "course_names": await get_courses_list(db),
     })

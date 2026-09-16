@@ -11,6 +11,8 @@ class Course(Base):
     course_name = Column(String(100), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Tracks if the background task is currently generating lessons and schedules
+    is_generating = Column(Boolean, default=True, nullable=False)
 
     chapters = relationship('Chapter', back_populates='course', cascade='all, delete-orphan')
 

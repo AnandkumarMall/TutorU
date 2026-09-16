@@ -10,7 +10,7 @@ from sqlalchemy import select, delete
 
 from database import get_db
 from models import Course, Chapter, Lesson, Quiz, TodaysTask, Schedule
-from dependencies import render, get_course_names
+from dependencies import render, get_courses_list
 
 from utils import quiz_chain
 from routers.limiter import limiter
@@ -154,7 +154,7 @@ async def quiz_view(
         "questions": questions_data,
         "score": score,
         "total": len(questions),
-        "course_names": await get_course_names(db),
+        "course_names": await get_courses_list(db),
     })
 
 

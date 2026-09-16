@@ -65,6 +65,8 @@ async def _apply_schema_migrations():
         "ALTER TABLE lessons ADD COLUMN vector_indexed BOOLEAN DEFAULT 0 NOT NULL",
         # Phase 2 — pre-rendered markdown HTML
         "ALTER TABLE lessons ADD COLUMN content_html TEXT",
+        # Phase 3 — background generation state
+        "ALTER TABLE courses ADD COLUMN is_generating BOOLEAN DEFAULT 0 NOT NULL",
     ]
     async with engine.begin() as conn:
         for stmt in new_columns:

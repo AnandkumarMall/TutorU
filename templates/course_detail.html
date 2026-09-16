@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ course_name }} - TutorU{% endblock %}
 
+{% block extra_head %}
+    {% if course.is_generating %}
+    <meta http-equiv="refresh" content="5">
+    {% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="mb-8" style="display: flex; justify-content: space-between; align-items: center;">
     <a href="/" class="btn btn-secondary">
@@ -13,6 +19,13 @@
     </form>
 </div>
 
+{% if course.is_generating %}
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 128px 0; text-align: center;">
+    <i class="fas fa-spinner fa-spin mb-4" style="font-size: 48px; color: var(--primary);"></i>
+    <h2 class="display-md mb-2">Crafting your learning path...</h2>
+    <p class="body-lg text-mute">Our AI is designing chapters and lessons just for you. This usually takes about a minute.<br>This page will automatically refresh.</p>
+</div>
+{% else %}
 <div class="mb-12" style="border-bottom: 1px solid var(--hairline); padding-bottom: 32px;">
     <div class="caption-mono mb-2">{{ chapters|length }} Chapters</div>
     <h1 class="display-lg tracking-tighter" style="margin-bottom: 16px;">{{ course_name }}</h1>
