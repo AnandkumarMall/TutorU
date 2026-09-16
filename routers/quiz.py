@@ -2,7 +2,7 @@ import asyncio
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, BackgroundTasks
 from fastapi.exceptions import HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -100,38 +100,9 @@ async def quiz_view(
     questions = (await db.execute(stmt)).scalars().all()
 
     if not questions:
-        # Acquire a per-quiz lock to prevent concurrent generation (AI-6)
-        lock_key = f"{course.course_id}:{chapter_id}:{lesson_id}:{quiz_type}:{today}"
-        lock = await _get_quiz_lock(lock_key)
-
-        async with lock:
-            # Double-checked locking: re-query while holding the lock
-            questions = (await db.execute(stmt)).scalars().all()
-
-            if not questions:
-                context = chapter.chapter_title
-                if lesson_id and lesson_title:
-                    context += f", lesson: {lesson_title}"
-
-                quiz_data = await quiz_chain.ainvoke({
-                    "course": course_name,
-                    "chapter": context,
-                    "quiz_type": quiz_type,
-                })
-
-                for question in quiz_data.questions:
-                    db.add(Quiz(
-                        date=today,
-                        course_id=course.course_id,
-                        chapter_id=chapter_id,
-                        lesson_id=lesson_id,
-                        quiz_type=quiz_type,
-                        question=question.question,
-                        options=json.dumps(question.options),
-                        correct_answer=question.correct_answer,
-                    ))
-                await db.commit()
-                questions = (await db.execute(stmt)).scalars().all()
+        needs_generation = True
+    else:
+        needs_generation = False
 
     questions_data = [
         {
@@ -155,27 +126,41 @@ async def quiz_view(
         "score": score,
         "total": len(questions),
         "course_names": await get_courses_list(db),
+        "needs_generation": needs_generation,
+        "course_id": course.course_id,
     })
 
 
-@router.post("/submit_quiz", name="submit_quiz")
-async def submit_quiz(request: Request, db: AsyncSession = Depends(get_db)):
-    data = await request.json()
-    course_name = data.get("course_name")
-    chapter_id = data.get("chapter_id")
-    lesson_id = data.get("lesson_id")
-    quiz_type = data.get("quiz_type")
-    answers = data.get("answers", [])
+@router.post("/quiz/{course_name}/{chapter_id}/{lesson_id}/submit")
+@router.post("/quiz/{course_name}/{chapter_id}/submit")
+async def submit_quiz(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    course_name: str,
+    chapter_id: int,
+    lesson_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    # 404 guards (REL-1)
+    course = (await db.execute(
+        select(Course).where(Course.course_name == course_name)
+    )).scalars().first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found.")
+
+    chapter = (await db.execute(
+        select(Chapter).where(Chapter.chapter_id == chapter_id)
+    )).scalars().first()
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found.")
+
+    quiz_type = "Short Quiz" if lesson_id else "Large Quiz"
     today = datetime.now().date().strftime("%Y-%m-%d")
 
-    # course_id looked up once and reused (PERF-4)
-    course_id = (await db.execute(
-        select(Course.course_id).where(Course.course_name == course_name)
-    )).scalar()
-    if not course_id:
-        return JSONResponse({"success": False, "message": "Course not found."}, status_code=404)
+    data = await request.json()
+    answers = data.get("answers", [])
 
-    stmt = _build_quiz_stmt(course_id, chapter_id, lesson_id, quiz_type, today)
+    stmt = _build_quiz_stmt(course.course_id, chapter_id, lesson_id, quiz_type, today)
     questions = (await db.execute(stmt)).scalars().all()
 
     score = sum(
@@ -188,10 +173,9 @@ async def submit_quiz(request: Request, db: AsyncSession = Depends(get_db)):
 
     # Mark schedule task completed
     sched_stmt = select(Schedule).where(
-        Schedule.course_id == course_id,
+        Schedule.course_id == course.course_id,
         Schedule.chapter_id == chapter_id,
         Schedule.task_type == quiz_type,
-        Schedule.date == today,
     )
     if lesson_id:
         sched_stmt = sched_stmt.where(Schedule.lesson_id == lesson_id)
@@ -212,6 +196,9 @@ async def submit_quiz(request: Request, db: AsyncSession = Depends(get_db)):
             )
             db.add(todays_task)
         todays_task.completed = True
+
+        from bg_tasks import _generate_task_bg
+        background_tasks.add_task(_generate_task_bg, course.course_id)
 
     await db.commit()
     return JSONResponse({"success": True, "score": score, "total": len(questions)})

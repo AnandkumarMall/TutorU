@@ -120,6 +120,11 @@ async def _generate_lessons_and_schedule_bg(
             if course:
                 course.is_generating = False
             await db.commit()
+
+        # JIT Pre-generate the first lesson
+        from bg_tasks import _generate_task_bg
+        await _generate_task_bg(course_id)
+
     except Exception as e:
         logging.error(f"Background course generation failed: {e}")
         async with AsyncSessionLocal() as db:

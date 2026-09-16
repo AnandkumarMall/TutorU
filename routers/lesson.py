@@ -44,25 +44,11 @@ async def lesson_view(
     # -----------------------------------------------------------------------
     # Content generation + HTML pre-rendering (PERF-8)
     # -----------------------------------------------------------------------
-    if not lesson.content:
-        # First visit: generate content from LLM, render HTML, index in ChromaDB
-        raw_content = await content_chain.ainvoke({
-            "course": course_name,
-            "chapter": chapter.chapter_title,
-            "lesson": lesson.lesson_title,
-        })
-        lesson.content = raw_content
-        lesson.content_html = render_markdown(raw_content)  # pre-render once
-        lesson.vector_indexed = False
-        await db.commit()
+    needs_generation = False
 
-        indexed_ok = await run_in_threadpool(
-            add_lesson_to_vector_store,
-            course_name, chapter.chapter_title, lesson.lesson_title, raw_content,
-        )
-        if indexed_ok:
-            lesson.vector_indexed = True
-            await db.commit()
+    if not lesson.content:
+        # Pass to template to fetch via AJAX API
+        needs_generation = True
 
     else:
         # Content exists — handle any out-of-sync states lazily
@@ -140,4 +126,6 @@ async def lesson_view(
         "next_lesson": next_lesson,
         "is_completed": is_completed,
         "course_names": await get_courses_list(db),
+        "needs_generation": needs_generation,
+        "course_id": course.course_id,
     })

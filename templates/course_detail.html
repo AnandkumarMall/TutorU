@@ -2,9 +2,6 @@
 {% block title %}{{ course_name }} - TutorU{% endblock %}
 
 {% block extra_head %}
-    {% if course.is_generating %}
-    <meta http-equiv="refresh" content="5">
-    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -20,13 +17,20 @@
 </div>
 
 {% if course.is_generating %}
-<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 128px 0; text-align: center;">
-    <i class="fas fa-spinner fa-spin mb-4" style="font-size: 48px; color: var(--primary);"></i>
-    <h2 class="display-md mb-2">Crafting your learning path...</h2>
-    <p class="body-lg text-mute">Our AI is designing chapters and lessons just for you. This usually takes about a minute.<br>This page will automatically refresh.</p>
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 128px 0; text-align: center; border: 2px solid var(--hairline); border-radius: var(--radius-md); box-shadow: var(--shadow-3); background: var(--canvas-soft); position: relative; overflow: hidden;" class="generating-course" data-course-id="{{ course.course_id }}">
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px); animation: moveStripes 20s linear infinite;"></div>
+    <i class="fas fa-cog fa-spin mb-4" style="font-size: 48px; color: var(--primary); position: relative; z-index: 1;"></i>
+    <h2 class="display-md mb-2" style="position: relative; z-index: 1;">Crafting your learning path...</h2>
+    <p class="body-lg text-mute" style="position: relative; z-index: 1;">Our AI is designing chapters and lessons just for you.<br>This page will automatically reveal when complete.</p>
 </div>
+<style>
+    @keyframes moveStripes {
+        0% { background-position: 0 0; }
+        100% { background-position: 50px 0; }
+    }
+</style>
 {% else %}
-<div class="mb-12" style="border-bottom: 1px solid var(--hairline); padding-bottom: 32px;">
+<div class="mb-12" style="border-bottom: 2px solid var(--hairline); padding-bottom: 32px;">
     <div class="caption-mono mb-2">{{ chapters|length }} Chapters</div>
     <h1 class="display-lg tracking-tighter" style="margin-bottom: 16px;">{{ course_name }}</h1>
     
@@ -53,8 +57,8 @@
 {% else %}
     <div style="display: flex; flex-direction: column; gap: 32px;">
         {% for chapter in chapters %}
-            <div class="card p-0" style="padding: 0; overflow: hidden;">
-                <div style="background-color: var(--canvas-soft); padding: 16px 24px; border-bottom: 1px solid var(--hairline); display: flex; justify-content: space-between; align-items: center;">
+            <div class="brutal-card p-0" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
+                <div style="background-color: var(--canvas-soft-2); padding: 16px 24px; border-bottom: 2px solid var(--hairline); display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div class="caption-mono mb-1">Chapter {{ chapter.chapter_order }}</div>
                         <h2 class="display-sm" style="margin: 0;">{{ chapter.chapter_title }}</h2>
@@ -68,42 +72,25 @@
                     {% if lessons[chapter.chapter_title] %}
                         <ul class="data-list">
                             {% for lesson in lessons[chapter.chapter_title] %}
-                                <li class="data-row" {% if lesson.lesson_id in completed_lessons %}style="background-color: var(--canvas-soft-2);"{% endif %}>
-                                    <div style="display: flex; align-items: center; gap: 16px;">
-                                        {% if lesson.lesson_id in completed_lessons %}
-                                        <div style="width: 24px; height: 24px; border-radius: 50%; background-color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff;">
-                                            <i class="fas fa-check"></i>
-                                        </div>
+                                {% set is_completed = lesson.lesson_id in completed_lessons %}
+                                <li class="data-row" {% if is_completed %}style="background-color: var(--canvas-soft-2);"{% endif %}>
+                                    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding-right: 16px;">
+                                        {% if is_completed %}
+                                            <div style="flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background-color: var(--success); display: flex; align-items: center; justify-content: center; border: 2px solid var(--ink);">
+                                                <i class="fas fa-check" style="color: var(--ink); font-size: 8px;"></i>
+                                            </div>
                                         {% else %}
-                                        <div style="width: 24px; height: 24px; border-radius: var(--radius-sm); background-color: var(--canvas-soft-2); border: 1px solid var(--hairline); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--mute);">
-                                            {{ lesson.lesson_order }}
-                                        </div>
+                                            <div style="flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--mute);"></div>
                                         {% endif %}
-                                        <div>
-                                            <div class="body-md" style="font-weight: 500;">{{ lesson.lesson_title }}</div>
-                                            {% if lesson.content %}
-                                                {% if lesson.lesson_id in completed_lessons %}
-                                                <div class="caption-mono" style="color: var(--success);">Completed</div>
-                                                {% else %}
-                                                <div class="caption-mono" style="color: var(--success);">Ready</div>
-                                                {% endif %}
-                                            {% else %}
-                                                <div class="caption-mono" style="color: var(--warning);">Generating</div>
-                                            {% endif %}
-                                        </div>
+                                        <span class="body-md" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {% if is_completed %}text-decoration: line-through; color: var(--mute);{% else %}font-weight: 500; color: var(--ink);{% endif %}">{{ lesson.lesson_title }}</span>
                                     </div>
-                                    <div style="display: flex; gap: 8px;">
-                                        <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=chapter.chapter_id, lesson_id=lesson.lesson_id) }}" class="btn btn-primary">
-                                            View
-                                        </a>
-                                        {% if lesson.lesson_id in lesson_quiz_scores %}
-                                        <a href="{{ url_for('quiz_view', course_name=course_name, chapter_id=chapter.chapter_id, lesson_id=lesson.lesson_id) }}" class="btn btn-ghost" style="color: var(--success); font-weight: 600;">
-                                            <i class="fas fa-check-circle"></i> {{ lesson_quiz_scores[lesson.lesson_id] }}
-                                        </a>
+                                    <div>
+                                        {% if lesson.content %}
+                                            <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=chapter.chapter_id, lesson_id=lesson.lesson_id) }}" class="btn btn-ghost btn-sm" style="{% if is_completed %}opacity: 0.5;{% endif %}">
+                                                {% if is_completed %}Review{% else %}Read{% endif %}
+                                            </a>
                                         {% else %}
-                                        <a href="{{ url_for('quiz_view', course_name=course_name, chapter_id=chapter.chapter_id, lesson_id=lesson.lesson_id) }}" class="btn btn-secondary">
-                                            Quiz
-                                        </a>
+                                            <div class="caption-mono" style="color: var(--warning);">Generating</div>
                                         {% endif %}
                                     </div>
                                 </li>
@@ -123,8 +110,8 @@
                             <i class="fas fa-check-circle"></i> Chapter Quiz Score: {{ chapter_quiz_scores[chapter.chapter_id] }}
                         </a>
                         {% else %}
-                        <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=chapter.chapter_id) }}" class="btn btn-secondary w-100" style="width: 100%;">
-                            Take Chapter Quiz
+                        <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=chapter.chapter_id) }}" class="btn btn-primary w-100" style="width: 100%;">
+                            <i class="fas fa-brain"></i> Chapter Quiz
                         </a>
                         {% endif %}
                     </div>
@@ -132,6 +119,7 @@
             </div>
         {% endfor %}
     </div>
+{% endif %}
 {% endif %}
 {% endblock %}
 
@@ -149,7 +137,21 @@
                     // Let the browser navigate, but show spinner while waiting for server to generate
                 }
             });
-        });
+        const generatingCourse = document.querySelector('.generating-course');
+        if (generatingCourse) {
+            const courseId = generatingCourse.dataset.courseId;
+            const interval = setInterval(() => {
+                fetch(`/api/course_status/${courseId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.is_generating) {
+                        clearInterval(interval);
+                        window.location.reload();
+                    }
+                })
+                .catch(e => console.error("Polling error:", e));
+            }, 2000);
+        }
     });
 </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
@@ -52,7 +52,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/mark_task_completed", name="mark_task_completed")
-async def mark_task_completed(request: Request, db: AsyncSession = Depends(get_db)):
+async def mark_task_completed(request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     data = await request.json()
     schedule_id = data.get('schedule_id')
     today = datetime.now().date().strftime("%Y-%m-%d")
@@ -92,12 +92,33 @@ async def mark_task_completed(request: Request, db: AsyncSession = Depends(get_d
             )
         )).scalars().first()
 
-        if not todays_task:
-            todays_task = TodaysTask(schedule_id=schedule_id, date=today, task_type=task_type)
-            db.add(todays_task)
+        try:
+            schedule = (await db.execute(
+                select(Schedule).where(Schedule.schedule_id == schedule_id)
+            )).scalars().first()
+            task_type = schedule.task_type if schedule else "Lesson"
 
-        todays_task.completed = True
-        await db.commit()
-        return JSONResponse({'success': True})
+            todays_task = (await db.execute(
+                select(TodaysTask).where(
+                    TodaysTask.schedule_id == schedule_id,
+                    TodaysTask.date == today,
+                )
+            )).scalars().first()
+
+            if not todays_task:
+                todays_task = TodaysTask(schedule_id=schedule_id, date=today, task_type=task_type)
+                db.add(todays_task)
+
+            todays_task.completed = True
+            await db.commit()
+
+            # JIT pre-generate the next task in the background
+            if schedule:
+                from bg_tasks import _generate_task_bg
+                background_tasks.add_task(_generate_task_bg, schedule.course_id)
+
+            return JSONResponse({"success": True})
+        except Exception as e:
+            return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
     return JSONResponse({'success': False, 'message': 'No scheduled task found for today'})

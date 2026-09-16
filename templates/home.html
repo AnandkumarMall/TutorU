@@ -35,13 +35,13 @@
                     {% for course_name, tasks in tasks_by_course.items() %}
                         {% for task in tasks %}
                             <li class="data-row" style="padding: 16px 24px;" data-schedule-id="{{ task.schedule_id }}" data-task-type="{{ task.task_type }}">
-                                <div style="display: flex; align-items: center; gap: 16px;">
-                                    <button class="complete-task" style="background: transparent; border: 1px solid var(--hairline-strong); border-radius: 4px; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: transparent; padding: 0; transition: all 150ms ease;">
+                                <div style="display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; padding-right: 16px;">
+                                    <button class="complete-task" style="flex-shrink: 0; background: transparent; border: 1px solid var(--hairline-strong); border-radius: 4px; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: transparent; padding: 0; transition: all 150ms ease;">
                                         <i class="fas fa-check" style="font-size: 10px;"></i>
                                     </button>
-                                    <div>
-                                        <div class="body-md" style="font-weight: 500; color: var(--ink);">{{ task.task_description }}</div>
-                                        <div class="caption-mono" style="margin-top: 4px;">{{ course_name }} • {{ task.task_type }}</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div class="body-md" style="font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ task.task_description }}</div>
+                                        <div class="caption-mono" style="margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ course_name }} • {{ task.task_type }}</div>
                                     </div>
                                 </div>
                                 <div>
@@ -76,26 +76,27 @@
                     {% for course_data in courses %}
                         {% set course = course_data.name %}
                         {% if course_data.is_generating %}
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); background-color: var(--canvas-soft); cursor: not-allowed; opacity: 0.8;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <i class="fas fa-spinner fa-spin" style="color: var(--primary); font-size: 12px;"></i>
-                                <span class="body-md" style="font-weight: 500; color: var(--ink);">{{ course }}</span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 2px solid var(--hairline); border-radius: var(--radius-sm); background-color: var(--canvas-soft); cursor: not-allowed; box-shadow: 2px 2px 0px 0px var(--hairline-strong); position: relative; overflow: hidden;" class="generating-course" data-course-id="{{ course_data.id }}">
+                            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px); animation: moveStripes 20s linear infinite;"></div>
+                            <div style="display: flex; align-items: center; gap: 12px; position: relative; z-index: 1;">
+                                <i class="fas fa-cog fa-spin" style="color: var(--primary); font-size: 14px;"></i>
+                                <span class="body-md" style="font-weight: 700; color: var(--ink);">{{ course }}</span>
                             </div>
-                            <span class="caption-mono" style="color: var(--primary); font-size: 10px; background: rgba(var(--primary-rgb), 0.1); padding: 2px 6px; border-radius: 4px;">Generating...</span>
+                            <span class="caption-mono" style="color: var(--primary); font-weight: 700; position: relative; z-index: 1; border: 1px solid var(--primary); padding: 2px 6px; border-radius: 4px;">Building...</span>
                         </div>
                         {% else %}
-                        <a href="{{ url_for('course_detail', course_name=course) }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); text-decoration: none; transition: background-color 150ms ease;" onmouseover="this.style.backgroundColor='var(--canvas-soft)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <a href="{{ url_for('course_detail', course_name=course) }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 2px solid var(--hairline); border-radius: var(--radius-sm); background-color: var(--canvas-soft); text-decoration: none; box-shadow: var(--shadow-2); transition: all 150ms ease;" onmouseover="this.style.boxShadow='var(--shadow-hover)'; this.style.transform='translate(-2px, -2px)';" onmouseout="this.style.boxShadow='var(--shadow-2)'; this.style.transform='none';">
                             <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--primary);"></div>
-                                <span class="body-md" style="font-weight: 500; color: var(--ink);">{{ course }}</span>
+                                <div style="width: 12px; height: 12px; border: 2px solid var(--ink); background-color: var(--primary);"></div>
+                                <span class="body-md" style="font-weight: 700; color: var(--ink);">{{ course }}</span>
                             </div>
-                            <i class="fas fa-arrow-right text-mute" style="font-size: 12px;"></i>
+                            <i class="fas fa-arrow-right text-mute" style="font-size: 14px;"></i>
                         </a>
                         {% endif %}
                     {% endfor %}
-                    <a href="{{ url_for('new_course') }}" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 1px dashed var(--hairline-strong); border-radius: var(--radius-sm); text-decoration: none; color: var(--ink); margin-top: 8px;" onmouseover="this.style.backgroundColor='var(--canvas-soft)'" onmouseout="this.style.backgroundColor='transparent'">
-                        <i class="fas fa-plus" style="font-size: 12px;"></i>
-                        <span class="body-md" style="font-weight: 500;">Generate new course</span>
+                    <a href="{{ url_for('new_course') }}" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2px dashed var(--hairline-strong); border-radius: var(--radius-sm); background: var(--canvas); text-decoration: none; color: var(--ink); margin-top: 8px; font-weight: 700; transition: all 150ms ease;" onmouseover="this.style.backgroundColor='var(--canvas-soft-2)'; this.style.borderStyle='solid';" onmouseout="this.style.backgroundColor='var(--canvas)'; this.style.borderStyle='dashed';">
+                        <i class="fas fa-plus" style="font-size: 14px;"></i>
+                        <span class="body-md" style="font-weight: 700; font-family: var(--font-mono); text-transform: uppercase;">Create Course</span>
                     </a>
                 </div>
             {% endif %}
@@ -151,6 +152,31 @@
                 });
             });
         });
+
+        // Polling logic for generating courses
+        const generatingCourses = document.querySelectorAll('.generating-course');
+        if (generatingCourses.length > 0) {
+            const courseIds = Array.from(generatingCourses).map(el => el.dataset.courseId);
+            const interval = setInterval(() => {
+                courseIds.forEach(id => {
+                    fetch(`/api/course_status/${id}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.is_generating) {
+                            clearInterval(interval);
+                            window.location.reload();
+                        }
+                    })
+                    .catch(e => console.error("Polling error:", e));
+                });
+            }, 2000);
+        }
     });
 </script>
+<style>
+    @keyframes moveStripes {
+        0% { background-position: 0 0; }
+        100% { background-position: 50px 0; }
+    }
+</style>
 {% endblock %}

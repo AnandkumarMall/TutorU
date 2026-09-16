@@ -39,13 +39,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
-from routers import home, course, lesson, quiz, chat
+from routers import home, course, lesson, quiz, chat, api
 
 app.include_router(home.router)
 app.include_router(course.router)
 app.include_router(lesson.router)
 app.include_router(quiz.router)
 app.include_router(chat.router)
+app.include_router(api.router)
 
 # ---------------------------------------------------------------------------
 # Startup: schema creation + inline migrations + ChromaDB init
