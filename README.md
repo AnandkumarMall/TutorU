@@ -55,7 +55,10 @@ flowchart LR
 
 ## How to Install and Run the Project
 
-### Prerequisites
+> [!TIP]
+> **For Recruiters & Evaluators:** You do not need to install this project or provide an API key to test it! A fully functional instance is hosted for you at the **[Live Demo](https://tutoru-1v05.onrender.com/)**.
+
+### Prerequisites (For Local Development)
 - Python 3.10+
 - Google Gemini API Key
 - Git

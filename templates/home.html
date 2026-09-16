@@ -65,7 +65,7 @@
     <div class="col-span-4">
         <h3 class="display-sm mb-4">My Courses</h3>
         <div style="display: flex; flex-direction: column;">
-            {% set courses = get_course_names() %}
+            {% set courses = course_names %}
             {% if not courses %}
                 <div style="padding: 32px 16px; text-align: center; border: 1px solid var(--hairline); border-radius: var(--radius-md); background: var(--canvas);">
                     <p class="body-sm text-mute mb-4">No active courses.</p>

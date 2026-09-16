@@ -1,12 +1,14 @@
 fastapi[all]
 sqlalchemy
+aiosqlite
 python-dotenv
 markdown
 langchain-google-genai
 langchain-core
-langchain-community
 langchain-text-splitters
 langgraph
 chromadb
 pydantic
 langchain-chroma
+slowapi
+uvloop; sys_platform != "win32"

@@ -130,9 +130,15 @@
             </div>
         </div>
 
-        {% if content %}
+        {% if content_html or content %}
             <div class="lesson-content" id="lessonContent">
-                {{ content | markdown | safe }}
+                {# content_html is pre-rendered at generation time — no per-request markdown parsing (PERF-8) #}
+                {# Falls back to filter rendering for lessons that predate the content_html column. #}
+                {% if content_html %}
+                    {{ content_html | safe }}
+                {% else %}
+                    {{ content | markdown | safe }}
+                {% endif %}
             </div>
 
             <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; align-items: center;">
@@ -248,10 +254,11 @@
             addMessage('user', question);
             questionInput.value = '';
 
-            addMessage('assistant', '<i class="fas fa-spinner fa-spin"></i> Thinking...', true);
+            addMessage('assistant', '', true);
 
-            const rawContent = lessonContent ? lessonContent.textContent || lessonContent.innerText : '';
-
+            // 'content' is intentionally omitted — the backend uses RAG (ChromaDB)
+            // to retrieve context. Sending the full page text would waste bandwidth
+            // and bypass the vector search.
             fetch('/ask_question', {
                 method: 'POST',
                 headers: {
@@ -261,8 +268,7 @@
                     question: question,
                     course_name: '{{ course_name }}',
                     chapter_title: '{{ chapter_title }}',
-                    lesson_title: '{{ lesson_title }}',
-                    content: rawContent
+                    lesson_title: '{{ lesson_title }}'
                 })
             })
             .then(response => response.json())
@@ -271,9 +277,10 @@
                 loadingMessages.forEach(msg => msg.remove());
 
                 if (data.success) {
-                    addMessage('assistant', data.answer + '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--hairline); font-size: 11px; color: var(--mute);">' + data.citation + '</div>');
+                    // Citation is a safe static string from the server — rendered separately (fixes FE-3)
+                    addMessage('assistant', data.answer, false, data.citation);
                 } else {
-                    addMessage('assistant', '<i class="fas fa-exclamation-circle text-error"></i> Error: ' + (data.error || 'Unknown error'));
+                    addMessage('assistant', 'Error: ' + (data.error || 'Unknown error'));
                 }
             })
             .catch(error => {
@@ -284,7 +291,21 @@
             });
         }
 
-        function addMessage(role, content, isLoading = false) {
+        /**
+         * Safely render a text string as formatted chat content.
+         *
+         * Security: AI-generated answer text is treated as UNTRUSTED. We set
+         * content via textContent (never innerHTML) for the answer body, then
+         * apply minimal safe formatting with DOM API calls — not string injection.
+         * This prevents XSS if Gemini ever returns <script> or <img onerror=...>.
+         * (fixes SEC-4)
+         *
+         * @param {string} role       - 'user' | 'assistant'
+         * @param {string} content    - Text content (untrusted for assistant)
+         * @param {boolean} isLoading - Show spinner placeholder
+         * @param {string} citation   - Optional citation HTML (trusted, from server)
+         */
+        function addMessage(role, content, isLoading = false, citation = null) {
             // Remove initial empty state if it's the first message
             const emptyState = chatContainer.querySelector('.text-center');
             if (emptyState && emptyState.querySelector('.fa-robot')) {
@@ -292,16 +313,45 @@
             }
 
             const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${role} ${isLoading ? 'loading' : ''}`;
+            messageDiv.className = `chat-message ${role}${isLoading ? ' loading' : ''}`;
 
-            if (role === 'assistant' && !isLoading) {
-                // Extremely basic markdown parsing for bold and linebreaks
-                let formatted = content
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n/g, '<br>');
-                messageDiv.innerHTML = formatted;
+            if (isLoading) {
+                // Spinner — static trusted HTML
+                messageDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Thinking...';
+            } else if (role === 'assistant') {
+                // Build formatted output using DOM API — never concatenate untrusted strings into innerHTML
+                const textDiv = document.createElement('div');
+
+                // Minimal safe markdown: split on newlines and bold markers
+                const lines = content.split('\n');
+                lines.forEach((line, idx) => {
+                    // Bold: **text** -> <strong>text</strong> via DOM (no injection)
+                    const parts = line.split(/\*\*(.*?)\*\*/g);
+                    parts.forEach((part, i) => {
+                        if (i % 2 === 1) {
+                            const strong = document.createElement('strong');
+                            strong.textContent = part;
+                            textDiv.appendChild(strong);
+                        } else if (part) {
+                            textDiv.appendChild(document.createTextNode(part));
+                        }
+                    });
+                    if (idx < lines.length - 1) {
+                        textDiv.appendChild(document.createElement('br'));
+                    }
+                });
+                messageDiv.appendChild(textDiv);
+
+                // Citation — static trusted HTML string from server (not user input)
+                if (citation) {
+                    const citDiv = document.createElement('div');
+                    citDiv.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid var(--hairline);font-size:11px;color:var(--mute);';
+                    citDiv.innerHTML = citation;  // safe: server-generated static string
+                    messageDiv.appendChild(citDiv);
+                }
             } else {
-                messageDiv.innerHTML = content;
+                // User message — treat as plain text
+                messageDiv.textContent = content;
             }
 
             chatContainer.appendChild(messageDiv);
