@@ -14,7 +14,8 @@ router = APIRouter()
 
 @router.get("/", response_class=HTMLResponse, name="home")
 async def home(request: Request, db: AsyncSession = Depends(get_db)):
-    today = datetime.now().date().strftime("%Y-%m-%d")
+    now = datetime.now()
+    today = now.date().strftime("%Y-%m-%d")
 
     # One query: join Schedule → Course, outer-join TodaysTask (for today only)
     stmt = (
@@ -44,10 +45,19 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
             'chapter_id': schedule.chapter_id,
         })
 
+    courses = await get_courses_list(db)
+    active_course_name = next(iter(tasks_by_course), None)
+    active_course = next(
+        (course for course in courses if course["name"] == active_course_name),
+        courses[0] if courses else None,
+    )
+
     return render(request, "home.html", {
         "tasks_by_course": tasks_by_course,
         "today": today,
-        "course_names": await get_courses_list(db),
+        "today_label": f"{now.strftime('%A, %B')} {now.day}",
+        "course_names": courses,
+        "active_course": active_course,
     })
 
 

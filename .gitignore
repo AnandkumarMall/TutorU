@@ -11,6 +11,7 @@ env/
 # Application specific
 instance/
 tutoru.db
+*.db
 
 # macOS
 .DS_Store

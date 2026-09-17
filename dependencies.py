@@ -1,4 +1,5 @@
 import markdown as md_module
+from pathlib import Path
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,8 +43,14 @@ async def get_courses_list(db: AsyncSession) -> list[dict]:
     Return a list of courses with their generating status.
     """
     from models import Course
-    result = await db.execute(select(Course.course_name, Course.is_generating))
-    return [{"name": row[0], "is_generating": row[1]} for row in result.all()]
+    result = await db.execute(
+        select(Course.course_id, Course.course_name, Course.is_generating)
+        .order_by(Course.course_id.desc())
+    )
+    return [
+        {"id": row[0], "name": row[1], "is_generating": row[2]}
+        for row in result.all()
+    ]
 
 
 def render(request: Request, template_name: str, context: dict = None, status_code: int = 200):
@@ -58,5 +65,15 @@ def render(request: Request, template_name: str, context: dict = None, status_co
             kwargs['path'] = kwargs.pop('filename')
         return request.url_for(name, **kwargs)
 
+    def static_url(filename: str) -> str:
+        """Return a versioned static URL so stylesheet updates cannot be cached stale."""
+        asset = Path(__file__).resolve().parent / "static" / filename
+        try:
+            version = asset.stat().st_mtime_ns
+        except OSError:
+            version = 0
+        return f"{request.url_for('static', path=filename)}?v={version}"
+
     context["url_for"] = custom_url_for
+    context["static_url"] = static_url
     return templates.TemplateResponse(request=request, name=template_name, context=context, status_code=status_code)

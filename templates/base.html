@@ -4,94 +4,177 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}TutorU{% endblock %}</title>
-    
+    <meta name="description" content="{% block description %}TutorU - Your AI-powered personal learning studio.{% endblock %}">
+
+    <script>
+        (() => {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                document.documentElement.dataset.theme = savedTheme ||
+                    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            } catch (_) {
+                document.documentElement.dataset.theme = 'light';
+            }
+        })();
+    </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/anthropic.css') }}">
+    <link rel="stylesheet" href="{{ static_url('css/anthropic.css') }}">
 
     {% block extra_head %}{% endblock %}
 </head>
-<body data-theme="light">
-    
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('home') }}">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-ink">
+<body>
+
+<div class="app-layout {% block app_layout_class %}{% endblock %}">
+
+    <!-- ── LEFT SIDEBAR ─────────────────────────────────────────────────── -->
+    {% block sidebar %}
+    <aside class="sidebar" id="sidebar">
+
+        <!-- Logo -->
+        <a href="{{ url_for('home') }}" class="sidebar-logo">
+            <div class="sidebar-logo-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
                 </svg>
-                TutorU
-            </a>
-            
-            <div class="nav-links">
-                <a class="btn btn-ghost" href="{{ url_for('new_course') }}">New Course</a>
-                <button class="btn btn-secondary" id="theme-toggle" aria-label="Toggle dark mode">
-                    <i class="fas fa-moon"></i>
-                </button>
             </div>
-        </div>
-    </nav>
+            <span class="sidebar-logo-text">TutorU</span>
+        </a>
 
-    <!-- Main Content -->
-    <main class="container mt-8 mb-8">
-        <!-- Toast Notifications -->
+        <!-- Primary nav -->
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('home') }}" class="sidebar-nav-item {% if request.url.path == '/' %}active{% endif %}">
+                <i class="fas fa-home"></i>
+                Today
+            </a>
+            <a href="{{ url_for('new_course') }}" class="sidebar-nav-item {% if '/new_course' in request.url.path or '/create' in request.url.path %}active{% endif %}">
+                <i class="fas fa-compass"></i>
+                Create Course
+            </a>
+        </nav>
+
+        <div class="sidebar-divider"></div>
+
+        <!-- Current course mini-card (if available) -->
+        {% set courses = course_names if course_names is defined else [] %}
+        {% if courses %}
+            <div class="sidebar-section-label">My Courses</div>
+            <div style="padding: 0 12px; display: flex; flex-direction: column; gap: 4px;">
+                {% for course_data in courses[:4] %}
+                    {% set course = course_data.name %}
+                    {% if course_data.is_generating %}
+                        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--canvas-warm); border: 1px solid var(--border); opacity: 0.8;" class="generating-course" data-course-id="{{ course_data.id }}">
+                            <i class="fas fa-circle-notch fa-spin" style="color: var(--primary); font-size: 11px; flex-shrink: 0;"></i>
+                            <span style="font-size: 0.8rem; font-weight: 500; color: var(--body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ course }}</span>
+                            <span class="badge badge-primary" style="margin-left: auto; flex-shrink: 0; font-size: 0.6rem;">Building</span>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('course_detail', course_name=course) }}" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: var(--body); font-size: 0.85rem; font-weight: 500; transition: background 0.2s, color 0.2s;" onmouseover="this.style.background='var(--primary-soft)'; this.style.color='var(--primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--body)'">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0;"></div>
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ course }}</span>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Create course CTA -->
+        <a href="{{ url_for('new_course') }}" class="sidebar-create-btn" style="margin-top: 12px;">
+            <i class="fas fa-plus" style="font-size: 0.8rem;"></i>
+            Create Course
+        </a>
+
+        <!-- Motivational quote -->
+        <div class="sidebar-quote" style="margin-top: auto;">
+            <div style="font-style: italic; color: var(--mute); font-size: 0.78rem; line-height: 1.7;">
+                "Small steps create remarkable futures."
+            </div>
+            <div style="width: 24px; height: 2px; background: var(--accent); margin-top: 10px; border-radius: 2px;"></div>
+        </div>
+
+    </aside>
+    {% endblock %}
+
+    <!-- ── MAIN CONTENT ──────────────────────────────────────────────────── -->
+    <div class="main-content {% block main_content_class %}{% endblock %}">
+
+        <!-- Toast notifications -->
         <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 100; display: flex; flex-direction: column; gap: 8px;">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="toast-item" style="background: var(--canvas); border: 2px solid var(--hairline); box-shadow: var(--shadow-2); border-radius: var(--radius-sm); padding: 16px; display: flex; align-items: center; gap: 12px; min-width: 300px; animation: slideIn 0.3s ease;">
-                            {% if category == 'error' or category == 'danger' %}
-                                <i class="fas fa-exclamation-circle" style="color: var(--error);"></i>
+                        <div class="toast-item" id="toast-{{ loop.index }}">
+                            {% if category in ('error', 'danger') %}
+                                <i class="fas fa-exclamation-circle" style="color: var(--error); flex-shrink: 0;"></i>
                             {% elif category == 'success' %}
-                                <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                                <i class="fas fa-check-circle" style="color: var(--success); flex-shrink: 0;"></i>
                             {% else %}
-                                <i class="fas fa-info-circle" style="color: var(--link);"></i>
+                                <i class="fas fa-info-circle" style="color: var(--primary); flex-shrink: 0;"></i>
                             {% endif %}
-                            <div class="body-sm" style="flex: 1;">{{ message }}</div>
-                            <button onclick="this.parentElement.remove()" style="background: transparent; border: none; cursor: pointer; color: var(--mute);"><i class="fas fa-times"></i></button>
+                            <span class="body-sm text-ink" style="flex: 1;">{{ message }}</span>
+                            <button onclick="this.closest('.toast-item').remove()" style="background: none; border: none; cursor: pointer; color: var(--mute); font-size: 1rem; flex-shrink: 0;">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
         </div>
-        
-        <style>
-            @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-            @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-        </style>
-        
+
         {% block content %}{% endblock %}
-    </main>
 
-    <!-- Custom JS -->
-    <script>
-        // Simple theme toggle logic
-        document.addEventListener('DOMContentLoaded', () => {
-            const toggle = document.getElementById('theme-toggle');
-            const body = document.body;
-            
-            // Check saved theme
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            body.setAttribute('data-theme', savedTheme);
-            updateToggleIcon(savedTheme);
-            
-            toggle.addEventListener('click', () => {
-                const current = body.getAttribute('data-theme');
-                const next = current === 'light' ? 'dark' : 'light';
-                body.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
-                updateToggleIcon(next);
+    </div><!-- /main-content -->
+
+</div><!-- /app-layout -->
+
+<!-- Global Scripts -->
+<script>
+    // Auto-dismiss toasts after 4 seconds
+    document.querySelectorAll('.toast-item').forEach((t, i) => {
+        setTimeout(() => t.style.opacity = '0', 3800);
+        setTimeout(() => t.remove(), 4200);
+    });
+
+    // Polling: auto-refresh when generating courses complete
+    document.addEventListener('DOMContentLoaded', function() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            const icon = themeToggle.querySelector('i');
+            const syncThemeControl = () => {
+                const isDark = document.documentElement.dataset.theme === 'dark';
+                themeToggle.setAttribute('aria-pressed', String(isDark));
+                themeToggle.setAttribute('title', isDark ? 'Use light theme' : 'Use dark theme');
+                if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+            };
+            syncThemeControl();
+            themeToggle.addEventListener('click', () => {
+                const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+                document.documentElement.dataset.theme = nextTheme;
+                try { localStorage.setItem('theme', nextTheme); } catch (_) {}
+                syncThemeControl();
             });
-            
-            function updateToggleIcon(theme) {
-                toggle.innerHTML = theme === 'light' 
-                    ? '<i class="fas fa-moon"></i>' 
-                    : '<i class="fas fa-sun"></i>';
-            }
-        });
-    </script>
+        }
 
-    {% block extra_js %}{% endblock %}
+        const generating = document.querySelectorAll('.generating-course');
+        if (generating.length > 0) {
+            const ids = Array.from(generating).map(el => el.dataset.courseId).filter(Boolean);
+            const interval = setInterval(() => {
+                ids.forEach(id => {
+                    fetch(`/api/course_status/${id}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.is_generating) {
+                            clearInterval(interval);
+                            window.location.reload();
+                        }
+                    })
+                    .catch(() => {});
+                });
+            }, 2500);
+        }
+    });
+</script>
+
+{% block extra_scripts %}{% endblock %}
+
 </body>
 </html>

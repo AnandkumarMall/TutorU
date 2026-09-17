@@ -91,26 +91,30 @@ async def lesson_view(
             break
 
     # -----------------------------------------------------------------------
-    # Completion status
+    # All lessons in chapter (for TOC sidebar) + completion set
     # -----------------------------------------------------------------------
-    is_completed = False
-    schedule = (await db.execute(
-        select(Schedule).where(
+    from sqlalchemy import and_
+    completed_stmt = (
+        select(Schedule.lesson_id)
+        .join(TodaysTask, TodaysTask.schedule_id == Schedule.schedule_id)
+        .where(
             Schedule.course_id == course.course_id,
-            Schedule.chapter_id == chapter.chapter_id,
-            Schedule.lesson_id == lesson_id,
             Schedule.task_type == 'Lesson',
+            TodaysTask.completed == True,
+            Schedule.lesson_id.isnot(None),
         )
-    )).scalars().first()
+    )
+    completed_lessons = set((await db.execute(completed_stmt)).scalars().all())
+    is_completed = lesson_id in completed_lessons
 
-    if schedule:
-        done = (await db.execute(
-            select(TodaysTask).where(
-                TodaysTask.schedule_id == schedule.schedule_id,
-                TodaysTask.completed == True,
-            )
-        )).scalars().first()
-        is_completed = done is not None
+    # Count all lessons in this course for progress display
+    from models import Chapter as ChapterModel
+    all_chapter_ids = (await db.execute(
+        select(ChapterModel.chapter_id).where(ChapterModel.course_id == course.course_id)
+    )).scalars().all()
+    total_lessons_count = len((await db.execute(
+        select(Lesson.lesson_id).where(Lesson.chapter_id.in_(all_chapter_ids))
+    )).scalars().all())
 
     return render(request, "lesson_view.html", {
         "course_name": course_name,
@@ -128,4 +132,10 @@ async def lesson_view(
         "course_names": await get_courses_list(db),
         "needs_generation": needs_generation,
         "course_id": course.course_id,
+        # New: TOC sidebar
+        "all_chapter_lessons": all_lessons,
+        "completed_lessons": completed_lessons,
+        "completed_lesson_count": len(completed_lessons),
+        "total_lessons": total_lessons_count,
     })
+

@@ -1,157 +1,240 @@
 {% extends "base.html" %}
-{% block title %}{{ course_name }} - TutorU{% endblock %}
-
-{% block extra_head %}
-{% endblock %}
+{% block title %}{{ course_name }} — TutorU{% endblock %}
 
 {% block content %}
-<div class="mb-8" style="display: flex; justify-content: space-between; align-items: center;">
-    <a href="/" class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i> Back
-    </a>
-    <form action="/delete_course/{{ course_name }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this course? This action cannot be undone.');" style="margin: 0;">
-        <button type="submit" class="btn btn-ghost" style="color: var(--error);">
-            <i class="fas fa-trash-alt"></i> Delete
-        </button>
-    </form>
+
+<!-- Top bar -->
+<div class="top-bar">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="{{ url_for('home') }}" class="btn btn-ghost btn-sm" style="color: var(--mute); padding: 6px 10px;">
+            <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i>
+        </a>
+        <div>
+            <div class="label-sm" style="color: var(--mute);">Course</div>
+            <h1 class="display-sm" style="font-size: 1.1rem;">{{ course_name }}</h1>
+        </div>
+    </div>
+    <div>
+        <form action="/delete_course/{{ course_name }}" method="POST"
+              onsubmit="return confirm('Delete this course? This cannot be undone.');"
+              style="margin: 0;">
+            <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--error);">
+                <i class="fas fa-trash-alt"></i> Delete
+            </button>
+        </form>
+    </div>
 </div>
 
 {% if course.is_generating %}
-<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 128px 0; text-align: center; border: 2px solid var(--hairline); border-radius: var(--radius-md); box-shadow: var(--shadow-3); background: var(--canvas-soft); position: relative; overflow: hidden;" class="generating-course" data-course-id="{{ course.course_id }}">
-    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px); animation: moveStripes 20s linear infinite;"></div>
-    <i class="fas fa-cog fa-spin mb-4" style="font-size: 48px; color: var(--primary); position: relative; z-index: 1;"></i>
-    <h2 class="display-md mb-2" style="position: relative; z-index: 1;">Crafting your learning path...</h2>
-    <p class="body-lg text-mute" style="position: relative; z-index: 1;">Our AI is designing chapters and lessons just for you.<br>This page will automatically reveal when complete.</p>
-</div>
-<style>
-    @keyframes moveStripes {
-        0% { background-position: 0 0; }
-        100% { background-position: 50px 0; }
-    }
-</style>
-{% else %}
-<div class="mb-12" style="border-bottom: 2px solid var(--hairline); padding-bottom: 32px;">
-    <div class="caption-mono mb-2">{{ chapters|length }} Chapters</div>
-    <h1 class="display-lg tracking-tighter" style="margin-bottom: 16px;">{{ course_name }}</h1>
-    
-    {% set ns = namespace(total=0) %}
-    {% for chapter in chapters %}
-        {% set ns.total = ns.total + (lessons[chapter.chapter_title]|length if lessons[chapter.chapter_title] else 0) %}
-    {% endfor %}
-    {% set progress = (completed_lessons|length / ns.total * 100)|round|int if ns.total > 0 else 0 %}
-    
-    <div style="display: flex; align-items: center; gap: 16px; max-width: 400px;">
-        <div style="height: 6px; background-color: var(--canvas-soft-2); border-radius: 3px; flex-grow: 1; overflow: hidden;">
-            <div style="height: 100%; background-color: var(--primary); border-radius: 3px; width: {{ progress }}%; transition: width 1s ease;"></div>
+<!-- ── GENERATING STATE ─────────────────────────────────────────────── -->
+<div class="page-content">
+    <div class="generating-course" data-course-id="{{ course.course_id }}"
+         style="text-align: center; padding: 96px 40px; background: var(--canvas-soft); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+            <i class="fas fa-circle-notch fa-spin" style="color: var(--primary); font-size: 1.75rem;"></i>
         </div>
-        <div class="caption-mono">{{ progress }}% complete</div>
+        <h2 class="display-md mb-3">Crafting your learning path...</h2>
+        <p class="body-md text-mute" style="max-width: 440px; margin: 0 auto;">
+            Our AI is designing chapters and lessons tailored for you. This page will automatically update when ready.
+        </p>
     </div>
 </div>
 
-{% if not chapters %}
-    <div class="card-soft" style="text-align: center; padding: 64px 24px;">
-        <i class="fas fa-book-open text-mute" style="font-size: 48px; margin-bottom: 16px;"></i>
-        <h4 class="display-sm mb-2">No chapters yet</h4>
-        <p class="body-md text-mute">This course is empty or still generating.</p>
-    </div>
 {% else %}
-    <div style="display: flex; flex-direction: column; gap: 32px;">
-        {% for chapter in chapters %}
-            <div class="brutal-card p-0" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
-                <div style="background-color: var(--canvas-soft-2); padding: 16px 24px; border-bottom: 2px solid var(--hairline); display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div class="caption-mono mb-1">Chapter {{ chapter.chapter_order }}</div>
-                        <h2 class="display-sm" style="margin: 0;">{{ chapter.chapter_title }}</h2>
-                    </div>
-                    <div class="caption-mono">
-                        {{ lessons[chapter.chapter_title]|length if lessons[chapter.chapter_title] else 0 }} lessons
-                    </div>
+<!-- ── COURSE CONTENT ────────────────────────────────────────────────── -->
+{% set ns = namespace(total=0) %}
+{% for chapter in chapters %}
+    {% set ns.total = ns.total + (lessons[chapter.chapter_title]|length if lessons[chapter.chapter_title] else 0) %}
+{% endfor %}
+{% set progress = (completed_lessons|length / ns.total * 100)|round|int if ns.total > 0 else 0 %}
+
+<div class="page-content">
+
+    <!-- Course header -->
+    <div style="margin-bottom: 32px;">
+        <div class="label-sm mb-3" style="color: var(--accent);">
+            <i class="fas fa-book-open" style="margin-right: 6px;"></i>
+            {{ chapters|length }} chapters · {{ ns.total }} lessons
+        </div>
+        <h2 class="display-lg mb-4" style="font-family: var(--font-serif);">{{ course_name }}</h2>
+
+        <!-- Progress bar -->
+        <div style="display: flex; align-items: center; gap: 16px; max-width: 500px;">
+            <div class="progress-bar-wrap" style="flex: 1;">
+                <div class="progress-bar-fill" style="width: {{ progress }}%;"></div>
+            </div>
+            <span class="body-sm" style="font-weight: 600; color: var(--ink); white-space: nowrap;">
+                {{ progress }}% complete
+            </span>
+        </div>
+    </div>
+
+    <!-- Layout: chapters + sidebar -->
+    <div style="display: grid; grid-template-columns: 1fr 280px; gap: 32px; align-items: start;">
+
+        <!-- CHAPTERS -->
+        <div>
+            {% if not chapters %}
+                <div class="card" style="text-align: center; padding: 64px 24px;">
+                    <i class="fas fa-book-open text-mute" style="font-size: 2.5rem; margin-bottom: 16px;"></i>
+                    <h4 class="display-sm mb-2">No chapters yet</h4>
+                    <p class="body-sm text-mute">This course is empty or still generating.</p>
                 </div>
-                
-                <div style="padding: 0 24px;">
-                    {% if lessons[chapter.chapter_title] %}
-                        <ul class="data-list">
-                            {% for lesson in lessons[chapter.chapter_title] %}
-                                {% set is_completed = lesson.lesson_id in completed_lessons %}
-                                <li class="data-row" {% if is_completed %}style="background-color: var(--canvas-soft-2);"{% endif %}>
-                                    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding-right: 16px;">
-                                        {% if is_completed %}
-                                            <div style="flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background-color: var(--success); display: flex; align-items: center; justify-content: center; border: 2px solid var(--ink);">
-                                                <i class="fas fa-check" style="color: var(--ink); font-size: 8px;"></i>
-                                            </div>
-                                        {% else %}
-                                            <div style="flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--mute);"></div>
-                                        {% endif %}
-                                        <span class="body-md" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {% if is_completed %}text-decoration: line-through; color: var(--mute);{% else %}font-weight: 500; color: var(--ink);{% endif %}">{{ lesson.lesson_title }}</span>
+            {% else %}
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    {% for chapter in chapters %}
+                        <div style="background: var(--canvas-soft); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-xs);">
+                            <!-- Chapter header -->
+                            <div style="padding: 18px 24px; background: var(--canvas-warm); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 14px;">
+                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        {{ chapter.chapter_order }}
                                     </div>
                                     <div>
-                                        {% if lesson.content %}
-                                            <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=chapter.chapter_id, lesson_id=lesson.lesson_id) }}" class="btn btn-ghost btn-sm" style="{% if is_completed %}opacity: 0.5;{% endif %}">
-                                                {% if is_completed %}Review{% else %}Read{% endif %}
-                                            </a>
-                                        {% else %}
-                                            <div class="caption-mono" style="color: var(--warning);">Generating</div>
-                                        {% endif %}
+                                        <div class="label-xs mb-1">Chapter {{ chapter.chapter_order }}</div>
+                                        <h3 class="display-sm" style="font-size: 1.1rem; margin: 0;">{{ chapter.chapter_title }}</h3>
                                     </div>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div style="padding: 24px 0; text-align: center;" class="body-sm text-mute">
-                            No lessons found for this chapter.
+                                </div>
+                                <div class="body-xs" style="color: var(--mute);">
+                                    {{ lessons[chapter.chapter_title]|length if lessons[chapter.chapter_title] else 0 }} lessons
+                                </div>
+                            </div>
+
+                            <!-- Lesson list -->
+                            {% if lessons[chapter.chapter_title] %}
+                                <ul class="data-list">
+                                    {% for lesson in lessons[chapter.chapter_title] %}
+                                        {% set is_completed = lesson.lesson_id in completed_lessons %}
+                                        <li style="display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--canvas-warm)'" onmouseout="this.style.background='transparent'">
+                                            <!-- Status dot -->
+                                            <div class="lesson-dot {% if is_completed %}done{% endif %}" style="flex-shrink: 0;">
+                                                {% if is_completed %}
+                                                    <i class="fas fa-check" style="color: white; font-size: 8px;"></i>
+                                                {% endif %}
+                                            </div>
+
+                                            <!-- Lesson info -->
+                                            <div style="flex: 1; min-width: 0;">
+                                                <div class="body-sm" style="font-weight: {% if is_completed %}400{% else %}600{% endif %}; color: {% if is_completed %}var(--mute){% else %}var(--ink){% endif %}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {% if is_completed %}text-decoration: line-through;{% endif %}">
+                                                    {{ lesson.lesson_title }}
+                                                </div>
+                                            </div>
+
+                                            <!-- Action -->
+                                            <div style="flex-shrink: 0;">
+                                                {% if lesson.content %}
+                                                    <a href="{{ url_for('lesson_view', course_name=course_name, chapter_id=chapter.chapter_id, lesson_id=lesson.lesson_id) }}"
+                                                       class="btn btn-ghost btn-sm" style="{% if is_completed %}opacity:0.6;{% endif %}">
+                                                        {% if is_completed %}Review{% else %}Read{% endif %}
+                                                        <i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <span class="badge badge-muted" style="font-size: 0.65rem;">Generating</span>
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+
+                                <!-- Chapter quiz footer -->
+                                <div style="padding: 14px 24px; background: var(--canvas-warm); border-top: 1px solid var(--border);">
+                                    {% if chapter.chapter_id in chapter_quiz_scores %}
+                                        <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=chapter.chapter_id) }}"
+                                           style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--success);">
+                                            <i class="fas fa-check-circle"></i>
+                                            <span class="body-sm" style="font-weight: 600;">Chapter Quiz — Score: {{ chapter_quiz_scores[chapter.chapter_id] }}</span>
+                                        </a>
+                                    {% else %}
+                                        <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=chapter.chapter_id) }}"
+                                           style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--primary);">
+                                            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i class="fas fa-clipboard-check" style="color: var(--accent); font-size: 0.75rem;"></i>
+                                            </div>
+                                            <span class="body-sm" style="font-weight: 600; color: var(--ink);">Chapter Quiz</span>
+                                            <i class="fas fa-chevron-right" style="color: var(--mute); font-size: 0.7rem; margin-left: auto;"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div style="padding: 24px; text-align: center;" class="body-sm text-mute">
+                                    No lessons found for this chapter.
+                                </div>
+                            {% endif %}
                         </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
-                
-                {% if lessons[chapter.chapter_title] %}
-                    <div style="padding: 16px 24px; background-color: var(--canvas-soft-2); border-top: 1px solid var(--hairline);">
-                        {% if chapter.chapter_id in chapter_quiz_scores %}
-                        <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=chapter.chapter_id) }}" class="btn w-100" style="width: 100%; background: var(--success); color: #fff; border-color: var(--success);">
-                            <i class="fas fa-check-circle"></i> Chapter Quiz Score: {{ chapter_quiz_scores[chapter.chapter_id] }}
-                        </a>
-                        {% else %}
-                        <a href="{{ url_for('quiz_view_large', course_name=course_name, chapter_id=chapter.chapter_id) }}" class="btn btn-primary w-100" style="width: 100%;">
-                            <i class="fas fa-brain"></i> Chapter Quiz
-                        </a>
-                        {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- SIDEBAR — Course at a glance -->
+        <div style="position: sticky; top: 88px;">
+            <div class="card" style="padding: 24px;">
+                <h3 class="display-sm mb-4" style="font-size: 1.1rem;">Course at a glance</h3>
+
+                <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--primary-soft); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-book-open" style="color: var(--primary); font-size: 0.85rem;"></i>
+                        </div>
+                        <div>
+                            <div class="body-sm" style="font-weight: 700; color: var(--ink);">{{ ns.total }} lessons</div>
+                            <div class="body-xs">{{ completed_lessons|length }} completed</div>
+                        </div>
                     </div>
-                {% endif %}
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--accent-soft); display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-clipboard-check" style="color: var(--accent); font-size: 0.85rem;"></i>
+                        </div>
+                        <div>
+                            <div class="body-sm" style="font-weight: 700; color: var(--ink);">{{ chapters|length }} quizzes</div>
+                            <div class="body-xs">One per chapter</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress ring -->
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <svg class="progress-ring-svg" width="100" height="100" viewBox="0 0 100 100">
+                        <circle class="progress-ring-track" cx="50" cy="50" r="42" stroke="var(--border)" stroke-width="8"/>
+                        <circle class="progress-ring-fill" cx="50" cy="50" r="42"
+                            stroke="var(--primary)" stroke-width="8"
+                            stroke-dasharray="{{ (42 * 2 * 3.14159)|round }}"
+                            stroke-dashoffset="{{ ((1 - progress/100) * 42 * 2 * 3.14159)|round }}"/>
+                    </svg>
+                    <div style="margin-top: 8px; font-size: 0.875rem; font-weight: 600; color: var(--ink);">{{ progress }}% complete</div>
+                </div>
+
+                <div class="body-sm text-mute" style="font-style: italic; text-align: center; line-height: 1.6;">
+                    You're making great progress. Consistent learning leads to extraordinary results.
+                </div>
             </div>
-        {% endfor %}
-    </div>
+        </div>
+
+    </div><!-- /grid -->
+
+</div><!-- /page-content -->
 {% endif %}
-{% endif %}
+
 {% endblock %}
 
-{% block extra_js %}
+{% block extra_scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const viewButtons = document.querySelectorAll('.data-row .btn-primary');
-        viewButtons.forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                const statusDiv = this.closest('.data-row').querySelector('.caption-mono');
-                if (statusDiv && statusDiv.textContent.includes('Generating')) {
-                    this.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Loading';
-                    this.style.opacity = '0.8';
-                    this.style.pointerEvents = 'none';
-                    // Let the browser navigate, but show spinner while waiting for server to generate
+document.addEventListener('DOMContentLoaded', function() {
+    const generatingCourse = document.querySelector('.generating-course');
+    if (generatingCourse) {
+        const courseId = generatingCourse.dataset.courseId;
+        const interval = setInterval(() => {
+            fetch(`/api/course_status/${courseId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.is_generating) {
+                    clearInterval(interval);
+                    window.location.reload();
                 }
-            });
-        const generatingCourse = document.querySelector('.generating-course');
-        if (generatingCourse) {
-            const courseId = generatingCourse.dataset.courseId;
-            const interval = setInterval(() => {
-                fetch(`/api/course_status/${courseId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.is_generating) {
-                        clearInterval(interval);
-                        window.location.reload();
-                    }
-                })
-                .catch(e => console.error("Polling error:", e));
-            }, 2000);
-        }
-    });
+            })
+            .catch(() => {});
+        }, 2000);
+    }
+});
 </script>
 {% endblock %}

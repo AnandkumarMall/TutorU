@@ -1,208 +1,339 @@
 {% extends "base.html" %}
-{% block title %}New Course - TutorU{% endblock %}
+{% block title %}Build your learning path — TutorU{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Loading overlay */
+.loado {
+    display: none; position: fixed; inset: 0;
+    background: rgba(245, 240, 232, 0.94);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    align-items: center; justify-content: center; flex-direction: column;
+    text-align: center;
+}
+[data-theme="dark"] .loado {
+    background: rgba(16, 21, 34, 0.95);
+}
+.loado.on { display: flex; }
+
+/* Animated book icon */
+.lbook-wrap {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: var(--primary-soft);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    animation: bookPulse 2s ease-in-out infinite;
+}
+@keyframes bookPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(43,91,245,0.2); }
+    50% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(43,91,245,0); }
+}
+
+/* Chapter selection cards */
+.chapter-checkbox { display: none; }
+.chapter-label {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px 18px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--canvas-soft);
+    margin-bottom: 10px;
+    position: relative;
+}
+.chapter-label:hover { border-color: var(--primary); background: var(--primary-soft); }
+.chapter-checkbox:checked + .chapter-label {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+.chapter-label .check-icon {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+    transition: all 0.2s;
+    color: transparent; font-size: 0.65rem;
+}
+.chapter-checkbox:checked + .chapter-label .check-icon {
+    background: var(--primary); border-color: var(--primary); color: white;
+}
+.chapter-num-badge {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--canvas-muted); color: var(--ink);
+    font-size: 0.8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.chapter-checkbox:checked + .chapter-label .chapter-num-badge {
+    background: var(--primary); color: white;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<style>
-    .form-label {
-        display: block;
-        font-weight: 500;
-        margin-bottom: 8px;
-        color: var(--ink);
-        font-size: 14px;
-    }
-    .form-text {
-        font-size: 13px;
-        color: var(--mute);
-        margin-top: 6px;
-    }
-    
-    .chapter-checkbox {
-        display: none;
-    }
-    .chapter-label {
-        display: block;
-        padding: 16px;
-        border: 2px solid var(--hairline);
-        border-radius: var(--radius-sm);
-        box-shadow: 2px 2px 0px 0px var(--hairline);
-        cursor: pointer;
-        transition: all 0.1s;
-        background: var(--canvas-soft);
-        margin-bottom: 12px;
-    }
-    .chapter-checkbox:checked + .chapter-label {
-        border-color: var(--ink);
-        box-shadow: 2px 2px 0px 0px var(--ink);
-        background-color: var(--canvas-soft-2);
-    }
-    .chapter-label strong {
-        display: block;
-        font-size: 16px;
-        color: var(--ink);
-    }
-    .chapter-label p {
-        margin: 4px 0 0 0;
-        font-size: 14px;
-        color: var(--mute);
-    }
 
-    .alert {
-        padding: 16px;
-        border-radius: var(--radius-sm);
-        margin-bottom: 24px;
-        font-size: 14px;
-        border: 1px solid var(--hairline);
-    }
-    .alert-danger { background-color: #fff0f0; border-color: #ffcccc; color: var(--error); }
-    .alert-success { background-color: #f0fff0; border-color: #ccffcc; color: var(--success); }
-    
-    .loado{display:none;position:fixed;inset:0;background:rgba(244,244,240,.95);backdrop-filter:blur(5px);z-index:9999;justify-content:center;align-items:center;flex-direction:column;text-align:center;border:2px solid var(--hairline);}
-    .loado.on{display:flex}
-    .lbook{width:80px;height:100px;background:var(--primary);border-radius:var(--radius-sm);position:relative;animation:bf 2s ease-in-out infinite;box-shadow:var(--shadow-3);margin:0 auto;border:2px solid var(--ink);}
-    .lbook::before{content:'';position:absolute;left:10px;top:10px;right:10px;bottom:10px;background:repeating-linear-gradient(0deg,transparent,transparent 10px,rgba(255,255,255,.3) 10px,rgba(255,255,255,.3) 12px);border:2px solid var(--ink);background-color:var(--canvas-soft);}
-    .lbook::after{content:'';position:absolute;left:-2px;top:-2px;bottom:-2px;width:16px;background:var(--ink);border-radius:2px 0 0 2px;}
-    @keyframes bf{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-10px) rotate(2deg)}}
+<!-- Loading overlay -->
+<div class="loado" id="lo">
+    <div>
+        <div class="lbook-wrap">
+            <i class="fas fa-book-open" style="color: var(--primary); font-size: 1.75rem;"></i>
+        </div>
+        <h2 class="display-sm mb-2" style="color: var(--ink);">Crafting your learning path...</h2>
+        <p class="body-md text-mute">Our AI is designing chapters and lessons just for you</p>
+        <div style="margin-top: 24px; width: 200px; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-left: auto; margin-right: auto;">
+            <div style="height: 100%; width: 40%; background: var(--primary); border-radius: 99px; animation: loadProg 2s ease-in-out infinite;"></div>
+        </div>
+    </div>
+</div>
+<style>
+@keyframes loadProg {
+    0% { margin-left: -40%; }
+    100% { margin-left: 100%; }
+}
 </style>
 
-<div class="loado" id="lo">
-    <div style="background: var(--canvas-soft); padding: 48px; border: 2px solid var(--ink); box-shadow: var(--shadow-3); border-radius: var(--radius-md);">
-        <div class="lbook"></div>
-        <h2 class="display-sm mt-6 mb-2" style="color: var(--ink)">Crafting your learning path...</h2>
-        <p class="body-md text-mute">Our AI is designing chapters and lessons just for you</p>
+<!-- Top bar -->
+<div class="top-bar">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="{{ url_for('home') }}" class="btn btn-ghost btn-sm" style="color: var(--mute); padding: 6px 10px;">
+            <i class="fas fa-arrow-left" style="font-size: 0.8rem;"></i> Back
+        </a>
+    </div>
+    <div class="label-sm" style="color: var(--mute);">
+        <i class="fas fa-sparkles" style="margin-right: 4px;"></i>
+        AI-Powered Learning
     </div>
 </div>
 
-<div class="bento-grid justify-content-center" style="display: flex; justify-content: center;">
-    <div class="col-span-8" style="width: 100%; max-width: 600px;">
+<!-- Main layout: left editorial + right form -->
+<div style="display: grid; grid-template-columns: 1fr 560px; min-height: calc(100vh - 65px); align-items: start;">
 
-        <div style="margin-bottom: 32px; text-align: center;">
-            <h1 class="display-md tracking-tighter mb-2">Create New Course</h1>
-            <p class="body-md text-mute">AI-generated curriculum tailored to your goals.</p>
-        </div>
+    <!-- LEFT: Editorial panel -->
+    <div style="padding: 64px 48px; background: var(--canvas); position: sticky; top: 65px; min-height: calc(100vh - 65px);">
 
+        <!-- Step indicator -->
         {% if session.step == 'select_chapters' %}
-        <div class="brutal-card p-0">
-            <div style="padding: 24px; border-bottom: 2px solid var(--hairline);">
-                <h3 class="display-sm" style="margin: 0; font-size: 18px;">Select Chapters for {{ session.course_name }}</h3>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 32px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--success); color: white; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center;"><i class="fas fa-check" style="font-size: 0.6rem;"></i></div>
+                <span style="font-size: 0.8rem; color: var(--success); font-weight: 600;">Tell us</span>
             </div>
-            <div style="padding: 24px;">
-                <form method="POST">
-                    <input type="hidden" name="action" value="create_course" />
-
-                    <div class="mb-4">
-                        <button type="button" class="btn btn-ghost btn-sm" id="selectAll">
-                            <i class="fas fa-check-square"></i> Select All
-                        </button>
-                    </div>
-
-                    <div class="chapter-list mb-6">
-                        {% for chapter in session.chapters %}
-                            <div>
-                                <input type="checkbox" name="selected_chapters" value="{{ chapter }}" id="chapter_{{ loop.index }}" class="chapter-checkbox" checked />
-                                <label for="chapter_{{ loop.index }}" class="chapter-label">
-                                    <strong>{{ chapter }}</strong>
-                                    <p>Chapter {{ loop.index }}</p>
-                                </label>
-                            </div>
-                        {% endfor %}
-                    </div>
-
-                    <div style="display: flex; gap: 12px; justify-content: space-between;">
-                        <a href="{{ url_for('home') }}" class="btn btn-ghost">Cancel</a>
-                        <button type="submit" class="btn btn-primary" id="createCourseBtn">
-                            Create Course
-                        </button>
-                    </div>
-                </form>
+            <div style="flex: 1; height: 1px; background: var(--primary);"></div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center;">2</div>
+                <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Choose a path</span>
+            </div>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--canvas-muted); color: var(--mute); font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center;">3</div>
+                <span style="font-size: 0.8rem; color: var(--mute);">Start learning</span>
             </div>
         </div>
         {% else %}
-        <div class="brutal-card p-0">
-            <div style="padding: 32px 24px; border-bottom: 1px solid var(--hairline);">
-                <h3 class="display-sm" style="margin: 0; font-size: 18px;">Course Details</h3>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 32px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center;">1</div>
+                <span style="font-size: 0.8rem; color: var(--primary); font-weight: 700;">Tell us</span>
             </div>
-            <div style="padding: 24px;">
-                <form method="POST" id="generateForm">
-                    <input type="hidden" name="action" value="generate_chapters" />
-
-                    <div class="mb-6">
-                        <label for="course_name" class="form-label">Course Name</label>
-                        <input type="text" class="form-control" id="course_name" name="course_name" placeholder="e.g., Introduction to Machine Learning" required minlength="3" autocomplete="off" />
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="course_description" class="form-label">Course Description <span class="text-mute">(Optional)</span></label>
-                        <textarea class="form-control" id="course_description" name="course_description" rows="3" placeholder="Specific goals, target audience, or context..."></textarea>
-                    </div>
-
-                    <div style="display: flex; gap: 12px; justify-content: space-between;">
-                        <a href="{{ url_for('home') }}" class="btn btn-ghost">Cancel</a>
-                        <button type="submit" class="btn btn-primary" id="generateBtn">
-                            Generate Chapters
-                        </button>
-                    </div>
-                </form>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--canvas-muted); color: var(--mute); font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center;">2</div>
+                <span style="font-size: 0.8rem; color: var(--mute);">Choose a path</span>
             </div>
-        </div>
-
-        <div style="padding: 0 24px;">
-            <div class="caption-mono mb-4 text-center">Inspiration</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
-                <button type="button" class="btn btn-secondary btn-sm inspiration-btn">Python Programming</button>
-                <button type="button" class="btn btn-secondary btn-sm inspiration-btn">Database Design</button>
-                <button type="button" class="btn btn-secondary btn-sm inspiration-btn">Digital Marketing</button>
-                <button type="button" class="btn btn-secondary btn-sm inspiration-btn">UI/UX Design</button>
+            <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--canvas-muted); color: var(--mute); font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center;">3</div>
+                <span style="font-size: 0.8rem; color: var(--mute);">Start learning</span>
             </div>
         </div>
         {% endif %}
+
+        <h1 class="display-xl mb-4" style="line-height: 1.05;">
+            {% if session.step == 'select_chapters' %}
+            Choose your<br>chapters
+            {% else %}
+            Build your<br>learning path
+            {% endif %}
+        </h1>
+
+        <p class="body-lg text-mute mb-8" style="max-width: 380px; line-height: 1.7;">
+            {% if session.step == 'select_chapters' %}
+            Review the AI-generated curriculum draft for <strong style="color: var(--ink);">{{ session.course_name }}</strong>. Select the chapters that fit your goals.
+            {% else %}
+            Tell us a bit about your goals, and we'll create a personalized curriculum, tailored to you.
+            {% endif %}
+        </p>
+
+        <!-- Decorative abstract illustration -->
+        <div style="position: relative; width: 240px; height: 200px; opacity: 0.75;">
+            <div style="position: absolute; width: 140px; height: 180px; background: linear-gradient(135deg, #E8EEF8 0%, #C7D5F0 100%); border-radius: 16px; top: 0; left: 20px; box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 20px;">
+                <div style="width: 80%; height: 8px; background: var(--primary); border-radius: 4px; opacity: 0.6;"></div>
+                <div style="width: 60%; height: 8px; background: var(--border-strong); border-radius: 4px;"></div>
+                <div style="width: 70%; height: 8px; background: var(--border-strong); border-radius: 4px;"></div>
+                <div style="width: 50%; height: 8px; background: var(--border-strong); border-radius: 4px;"></div>
+                <div style="width: 65%; height: 8px; background: var(--primary); border-radius: 4px; opacity: 0.4;"></div>
+            </div>
+            <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); top: 20px; right: 10px; box-shadow: 0 4px 12px rgba(244,123,43,0.3);"></div>
+            <div style="position: absolute; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); bottom: 20px; left: 0;"></div>
+        </div>
+
+        <div style="margin-top: 40px; font-style: italic; font-size: 0.85rem; color: var(--mute);">
+            "Small steps.<br>Real progress.<br>A brighter you."
+        </div>
+        <div style="width: 32px; height: 2px; background: var(--accent); margin-top: 10px; border-radius: 2px;"></div>
     </div>
-</div>
+
+    <!-- RIGHT: Form panel -->
+    <div style="padding: 48px 40px; background: var(--canvas-soft); min-height: calc(100vh - 65px); border-left: 1px solid var(--border);">
+
+        {% if session.step == 'select_chapters' %}
+        <!-- ── CHAPTER SELECTION FORM ──────────────────────────────── -->
+        <div style="margin-bottom: 24px;">
+            <div class="label-sm mb-2" style="color: var(--accent);">Your Course Draft</div>
+            <h2 class="display-sm mb-1">{{ session.course_name }}</h2>
+            <p class="body-sm text-mute">{{ session.chapters|length }} chapters generated &bull; Select the ones you want</p>
+        </div>
+
+        <form method="POST" id="createCourseForm">
+            <input type="hidden" name="action" value="create_course" />
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span class="label-sm">{{ session.chapters|length }} chapters</span>
+                <button type="button" class="btn btn-ghost btn-sm" id="selectAll" style="font-size: 0.8rem; padding: 6px 12px;">
+                    <i class="fas fa-check-double"></i> Select All
+                </button>
+            </div>
+
+            <div class="chapter-list" style="margin-bottom: 28px; max-height: 52vh; overflow-y: auto; padding-right: 4px;">
+                {% for chapter in session.chapters %}
+                    <div>
+                        <input type="checkbox" name="selected_chapters" value="{{ chapter }}"
+                               id="chapter_{{ loop.index }}" class="chapter-checkbox" checked />
+                        <label for="chapter_{{ loop.index }}" class="chapter-label">
+                            <div class="chapter-num-badge">{{ loop.index }}</div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 600; font-size: 0.9rem; color: var(--ink); margin-bottom: 2px;">{{ chapter }}</div>
+                                <div class="body-xs">Chapter {{ loop.index }}</div>
+                            </div>
+                            <div class="check-icon"><i class="fas fa-check"></i></div>
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div style="display: flex; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <a href="{{ url_for('home') }}" class="btn btn-ghost" style="flex: 1; justify-content: center;">Cancel</a>
+                <button type="submit" class="btn btn-primary" id="createCourseBtn" style="flex: 2; font-size: 1rem;">
+                    Create course <i class="fas fa-arrow-right" style="font-size: 0.85rem;"></i>
+                </button>
+            </div>
+        </form>
+
+        {% else %}
+        <!-- ── COURSE DETAILS FORM ──────────────────────────────────── -->
+        <div style="margin-bottom: 28px;">
+            <h2 class="display-sm mb-1">What do you want to learn?</h2>
+            <p class="body-sm text-mute">Describe your topic and goals</p>
+        </div>
+
+        <form method="POST" id="generateForm">
+            <input type="hidden" name="action" value="generate_chapters" />
+
+            <div class="form-group">
+                <label for="course_name" class="form-label">Topic</label>
+                <input type="text" class="form-control" id="course_name" name="course_name"
+                       placeholder="e.g., Machine Learning Foundations"
+                       required minlength="3" autocomplete="off" />
+            </div>
+
+            <div class="form-group">
+                <label for="course_description" class="form-label">
+                    Context & Goals <span class="body-xs" style="font-weight: 400; text-transform: none;">(Optional)</span>
+                </label>
+                <textarea class="form-control" id="course_description" name="course_description"
+                          rows="3"
+                          placeholder="e.g., I want to understand the math behind neural networks for a career switch into ML engineering"></textarea>
+            </div>
+
+            <!-- Inspiration chips -->
+            <div style="margin-bottom: 28px;">
+                <div class="label-sm mb-3">Or try a popular topic</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    {% for topic in ['Python Programming', 'Machine Learning', 'UI/UX Design', 'Digital Marketing', 'Database Design', 'Web Development'] %}
+                    <button type="button" class="inspiration-btn"
+                            style="padding: 7px 14px; background: var(--canvas-warm); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); font-size: 0.8rem; font-weight: 500; color: var(--body); cursor: pointer; transition: all 0.2s;"
+                            onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'; this.style.background='var(--primary-soft)';"
+                            onmouseout="this.style.borderColor='var(--border-strong)'; this.style.color='var(--body)'; this.style.background='var(--canvas-warm)';">
+                        {{ topic }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-xl btn-wide" id="generateBtn">
+                Generate my curriculum <i class="fas fa-arrow-right" style="margin-left: 4px;"></i>
+            </button>
+            <div class="body-xs text-center mt-3">Takes about 10–20 seconds</div>
+        </form>
+        {% endif %}
+
+    </div><!-- /form panel -->
+
+</div><!-- /grid -->
+
 {% endblock %}
 
-{% block extra_js %}
+{% block extra_scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const selectAllBtn = document.getElementById('selectAll');
-        if (selectAllBtn) {
-            selectAllBtn.addEventListener('click', function() {
-                const checkboxes = document.querySelectorAll('.chapter-checkbox');
-                const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-                checkboxes.forEach(cb => cb.checked = !allChecked);
-                this.innerHTML = allChecked ? '<i class="far fa-square"></i> Select All' : '<i class="fas fa-check-square"></i> Deselect All';
-            });
-        }
+document.addEventListener('DOMContentLoaded', function () {
+    // Select All toggle
+    const selectAllBtn = document.getElementById('selectAll');
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function () {
+            const checkboxes = document.querySelectorAll('.chapter-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            this.innerHTML = allChecked
+                ? '<i class="fas fa-check-double"></i> Select All'
+                : '<i class="fas fa-times"></i> Deselect All';
+        });
+    }
 
-        const generateForm = document.getElementById('generateForm');
-        if (generateForm) {
-            generateForm.addEventListener('submit', function() {
-                const btn = document.getElementById('generateBtn');
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generating...';
-                document.getElementById('lo').classList.add('on');
-            });
-        }
+    // Generate chapters → show loading
+    const generateForm = document.getElementById('generateForm');
+    if (generateForm) {
+        generateForm.addEventListener('submit', function () {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generating...';
+            document.getElementById('lo').classList.add('on');
+        });
+    }
 
-        const createCourseBtn = document.getElementById('createCourseBtn');
-        if (createCourseBtn) {
-            const form = createCourseBtn.closest('form');
-            form.addEventListener('submit', function() {
-                createCourseBtn.disabled = true;
-                createCourseBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Creating...';
-                document.getElementById('lo').classList.add('on');
-            });
-        }
+    // Create course → show loading
+    const createCourseForm = document.getElementById('createCourseForm');
+    if (createCourseForm) {
+        createCourseForm.addEventListener('submit', function () {
+            const btn = document.getElementById('createCourseBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Creating...';
+            document.getElementById('lo').classList.add('on');
+        });
+    }
 
-        // Handle Inspiration clicks
-        const inspirationBtns = document.querySelectorAll('.inspiration-btn');
-        const courseNameInput = document.getElementById('course_name');
-        if (inspirationBtns.length > 0 && courseNameInput) {
-            inspirationBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    courseNameInput.value = this.textContent;
-                    courseNameInput.focus();
-                });
-            });
-        }
+    // Inspiration chips → fill input
+    const courseNameInput = document.getElementById('course_name');
+    document.querySelectorAll('.inspiration-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            if (courseNameInput) {
+                courseNameInput.value = this.textContent.trim();
+                courseNameInput.focus();
+            }
+        });
     });
+});
 </script>
 {% endblock %}
