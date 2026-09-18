@@ -178,10 +178,11 @@ async def new_course_process(request: Request, background_tasks: BackgroundTasks
                 "course": course_name,
                 "description_text": description_text,
             })
-        except Exception:
+        except Exception as e:
+            logging.error(f"Failed to generate chapters: {e}", exc_info=True)
             request.session.pop('course_name', None)
             request.session.pop('course_description', None)
-            flash(request, 'Failed to generate chapters. Please try again.', 'error')
+            flash(request, f'Failed to generate chapters: {e}', 'error')
             return RedirectResponse(url=request.url_for('new_course'), status_code=303)
 
         request.session['chapters'] = chapter_data.chapters

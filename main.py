@@ -7,6 +7,9 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 import os
 import logging
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 from database import engine, Base
 import models  # noqa: F401 — side-effect: registers all ORM models with Base
